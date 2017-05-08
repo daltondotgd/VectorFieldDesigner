@@ -27,19 +27,43 @@ public:
 	virtual FString GetWorldCentricTabPrefix() const override;
 	virtual FLinearColor GetWorldCentricTabColorScale() const override;
 
+	virtual void ExtendToolbar();
+	virtual void BindEditorCommands();
+
+	void CreateSphericalForceField();
+	void CreateVortexForceField();
+	void CreateWindForceField();
+
 	virtual void RegisterTabSpawners(const TSharedRef<class FTabManager>& InTabManager) override;
 	virtual void UnregisterTabSpawners(const TSharedRef<class FTabManager>& InTabManager) override;
 
 	TSharedRef<SDockTab> SpawnTab_Viewport(const FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> SpawnTab_Details(const FSpawnTabArgs& Args);
 
-	//TSharedPtr<class SCheapTuneCompoundWidget> CheapTuneCompoundWidgetPtr;
-
 	// Inherited via FGCObject
-	virtual void AddReferencedObjects(FReferenceCollector & Collector) override;
+	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
 
 	UCustomizableVectorField* GetVectorFieldBeingEdited() const { return VectorFieldBeingEdited; }
 
+	void AddSelectedForceField(int Index, bool bClearSelection);
+	void RemoveSelectedForceField(int Index);
+	void ClearSelectedForceFields();
+	void RemoveInvalidForceFields();
+	bool IsSelectedForceField(int Index) const;
+	bool IsForceFieldValid(int Index) const;
+	bool HasSelectedForceFields() const;
+	bool GetLastSelectedForceFieldTransform(FTransform& OutTransform) const;
+	
+	void DestroySelectedForceFields();
+
+	TArray<UObject*> GetObjectsToObserve() const;
+
+	void TranslateSelectedForceFields(const FVector& DeltaDrag);
+	void RotateSelectedForceFields(const FRotator& DeltaRotation);
+	void ScaleSelectedForceFields(const FVector& DeltaScale);
+
 private:
 	UCustomizableVectorField* VectorFieldBeingEdited;
+	TArray<int> SelectedForceFieldIds;
+
 };

@@ -15,7 +15,7 @@ class FVFDesignerViewportClient : public FEditorViewportClient
 {
 public:
 	/** Constructor */
-	FVFDesignerViewportClient(const TAttribute<class UCustomizableVectorField*>& InVectorFieldBeingEdited, const TWeakPtr<SEditorViewport>& InEditorViewportWidget = nullptr);
+	FVFDesignerViewportClient(TWeakPtr<FVectorFieldDesignerWindow> InVectorFieldDesignerEditor, const TAttribute<class UCustomizableVectorField*>& InVectorFieldBeingEdited, const TWeakPtr<SEditorViewport>& InEditorViewportWidget = nullptr);
 
 	// FViewportClient interface
 	virtual void Draw(const FSceneView* View, FPrimitiveDrawInterface* PDI) override;
@@ -33,7 +33,7 @@ public:
 	virtual bool CanCycleWidgetMode() const override;
 	virtual FVector GetWidgetLocation() const override;
 	virtual FMatrix GetWidgetCoordSystem() const override;
-	//virtual ECoordSystem GetWidgetCoordSystemSpace() const override { return COORD_Local; }
+	virtual ECoordSystem GetWidgetCoordSystemSpace() const override { return COORD_Local; }
 	// End of FViewportClient interface
 
 	// FEditorViewportClient interface
@@ -48,12 +48,10 @@ public:
 
 private:
 	TAttribute<UCustomizableVectorField*> VectorFieldBeingEdited;
+	TWeakPtr<FVectorFieldDesignerWindow> VectorFieldDesignerEditorPtr;
 	FPreviewScene OwnedPreviewScene;
 
 	FWidget::EWidgetMode WidgetMode;
-
-	FVector TestLocation{ 50.0f };
-	FVector TestScale{ 10.0f };
 
 	bool bManipulating;
 };

@@ -15,29 +15,30 @@
 #include "PhysicsEngine/SphereElem.h"
 #include "PhysicsEngine/SphylElem.h"
 
-//struct HSMEForceFieldProxy : public HHitProxy
-//{
-//	DECLARE_HIT_PROXY();
-//
-//	//IStaticMeshEditor::FPrimData	PrimData;
-//
-//	//HSMECollisionProxy(const IStaticMeshEditor::FPrimData& InPrimData) :
-//	//	HHitProxy(HPP_UI),
-//	//	PrimData(InPrimData) {}
-//
-//	//HSMECollisionProxy(EKCollisionPrimitiveType InPrimType, int32 InPrimIndex) :
-//	//	HHitProxy(HPP_UI),
-//	//	PrimData(InPrimType, InPrimIndex) {}
-//};
-//IMPLEMENT_HIT_PROXY(HSMEForceFieldProxy, HHitProxy);
+#define LOCTEXT_NAMESPACE "FVFDesignerViewportClient"
 
-FVFDesignerViewportClient::FVFDesignerViewportClient(const TAttribute<UCustomizableVectorField*>& InVectorFieldBeingEdited, const TWeakPtr<SEditorViewport>& InEditorViewportWidget)
+struct HSMEForceFieldProxy : public HHitProxy
+{
+	DECLARE_HIT_PROXY();
+
+	int ForceFieldIndex;
+
+	HSMEForceFieldProxy(int InForceFieldIndex) :
+		HHitProxy(HPP_UI),
+		ForceFieldIndex(InForceFieldIndex) {}
+
+};
+IMPLEMENT_HIT_PROXY(HSMEForceFieldProxy, HHitProxy);
+
+FVFDesignerViewportClient::FVFDesignerViewportClient(TWeakPtr<FVectorFieldDesignerWindow> InVectorFieldDesignerEditor, const TAttribute<UCustomizableVectorField*>& InVectorFieldBeingEdited, const TWeakPtr<SEditorViewport>& InEditorViewportWidget)
 	: FEditorViewportClient(new FAssetEditorModeManager(), nullptr, InEditorViewportWidget)
+	, VectorFieldDesignerEditorPtr(InVectorFieldDesignerEditor)
 {
 	VectorFieldBeingEdited = InVectorFieldBeingEdited;
 	PreviewScene = &OwnedPreviewScene;
 
 	bOwnsModeTools = true;
+	WidgetMode = FWidget::WM_None;
 
 	SetRealtime(true);
 
@@ -46,6 +47,8 @@ FVFDesignerViewportClient::FVFDesignerViewportClient(const TAttribute<UCustomiza
 	EngineShowFlags.DisableAdvancedFeatures();
 	EngineShowFlags.SetCompositeEditorPrimitives(true);
 
+	Invalidate();
+
 	SetInitialViewTransform(LVT_Perspective, FVector(150.0f, 150.0f, 100.0f), FRotator(-30.0f, -135.0f, 0.0f), 0.0f);
 }
 
@@ -53,21 +56,22 @@ void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInter
 {
 	FEditorViewportClient::Draw(View, PDI);
 
-	//PDI->DrawLine(FVector::ZeroVector, FVector(1.0f, 1.0f, 1.0f) * 50.0f, FColor::Cyan, 0, 5.0f);
-
-	//HSMECollisionProxy* HitProxy = new HSMECollisionProxy(KPT_Sphere, i);
-	//PDI->SetHitProxy(HitProxy);
+	auto VectorFieldDesignerEditor = VectorFieldDesignerEditorPtr.Pin();
+	if (!VectorFieldDesignerEditor.IsValid())
+	{
+		return;
+	}
 
 	const FColor SelectedColor(149, 223, 157);
 	const FColor UnselectedColor(157, 149, 223);
 
-	//HHitProxy* HitProxy = new HHitProxy(HPP_Wireframe);
-	//const FColor CollisionColor = SelectedPrims.Contains(HitProxy->PrimData) ? SelectedColor : UnselectedColor;
-	FKSphereElem SphereElem(TestScale.X);
-	SphereElem.Center = TestLocation;
-	const FTransform ElemTM = SphereElem.GetTransform();
-	SphereElem.DrawElemWire(PDI, ElemTM, FVector(1.0f), FColor::Red);
-	//PDI->SetHitProxy(NULL);
+	for (int32 Index = 0; Index < VectorFieldBeingEdited.Get()->ForceFields.Num(); ++Index)
+	{
+		HSMEForceFieldProxy* HHitProxy = new HSMEForceFieldProxy(Index);
+		PDI->SetHitProxy(HHitProxy);
+		VectorFieldBeingEdited.Get()->ForceFields[Index]->Draw(PDI, VectorFieldDesignerEditor->IsSelectedForceField(Index) ? SelectedColor : UnselectedColor);
+		PDI->SetHitProxy(NULL);
+	}
 
 	FBox Bounds = VectorFieldBeingEdited.Get()->Bounds;
 	DrawWireBox(PDI, Bounds, FColor::Blue, SDPG_World, 1.0f);
@@ -81,24 +85,39 @@ void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInter
 			for (int k = 0; k < Resolution; ++k)
 			{
 				FVector Location = Bounds.GetExtent() * 2.0f * (FVector((float)i, (float)j, (float)k) + 0.5f) / FVector((float)Resolution) + Bounds.Min;
-				FVector Direction = FVector(5.0f);
+				FVector Direction = FVector(0.0f);
 				FColor Color = FColor::Green;
-				if (FVector::Distance(Location, TestLocation) < TestScale.X)
+				float Thickness = 0.0f;
+
+				for (int32 Index = 0; Index < VectorFieldBeingEdited.Get()->ForceFields.Num(); ++Index)
 				{
-					Direction = Location - TestLocation;
-					float Length = 1.0f - Direction.Size() / TestScale.X;
-					
-					Direction.Normalize();
-					Direction *= 20.0f * Length;
-					
-					Color = FColor::Cyan;
+					UForceFieldBase* ForceField = VectorFieldBeingEdited.Get()->ForceFields[Index];
+					if (ForceField->IsInRange(Location))
+					{
+						Direction += ForceField->ForceAtLocation(Location) * ForceField->Force;
+						if (VectorFieldDesignerEditor->IsSelectedForceField(Index))
+						{
+							Color = FColor::Cyan;
+							Thickness = 0.5f;
+						}
+					}
 				}
-				PDI->DrawLine(Location, Location + Direction, Color, SDPG_World);
+
+				if (Direction.Size() < KINDA_SMALL_NUMBER)
+				{
+					PDI->DrawPoint(Location, Color, 1.0f, SDPG_World);
+				}
+				else
+				{
+					//PDI->DrawLine(Location, Location + Direction, Color, SDPG_World, Thickness);
+					FTransform Transform;
+					Transform.SetLocation(Location);
+					Transform.SetRotation(FRotationMatrix::MakeFromX(Direction).ToQuat());
+					DrawDirectionalArrow(PDI, Transform.ToMatrixNoScale(), Color, Direction.Size(), 1.0f, SDPG_World);
+				}
 			}
 		}
 	}
-
-	FUnrealEdUtils::DrawWidget(View, PDI, FMatrix::Identity, 0, 0, EAxisList::Screen, EWidgetMovementMode::WMM_Translate);
 }
 
 void FVFDesignerViewportClient::DrawCanvas(FViewport& InViewport, FSceneView& View, FCanvas& Canvas)
@@ -116,6 +135,11 @@ void FVFDesignerViewportClient::Tick(float DeltaSeconds)
 {
 	FEditorViewportClient::Tick(DeltaSeconds);
 
+	if (VectorFieldDesignerEditorPtr.Pin()->HasSelectedForceFields() && WidgetMode == FWidget::WM_None)
+	{
+		WidgetMode = FWidget::WM_Translate;
+	}
+
 	if (!GIntraFrameDebuggingGameThread)
 	{
 		OwnedPreviewScene.GetWorld()->Tick(LEVELTICK_All, DeltaSeconds);
@@ -124,26 +148,31 @@ void FVFDesignerViewportClient::Tick(float DeltaSeconds)
 
 FWidget::EWidgetMode FVFDesignerViewportClient::GetWidgetMode() const
 {
-	return WidgetMode;
+	if (VectorFieldDesignerEditorPtr.Pin()->HasSelectedForceFields())
+		return WidgetMode;
+	else
+		return FWidget::WM_None;
 }
 
 bool FVFDesignerViewportClient::InputWidgetDelta(FViewport* InViewport, EAxisList::Type CurrentAxis, FVector& Drag, FRotator& Rot, FVector& Scale)
 {
 	bool bHandled = false;
-
 	if (bManipulating)
 	{
 		if (WidgetMode == FWidget::WM_Translate)
 		{
-			TestLocation += Drag;
+			VectorFieldDesignerEditorPtr.Pin()->TranslateSelectedForceFields(Drag);
 		}
 
-		if (WidgetMode == FWidget::WM_Scale)
+		else if (WidgetMode == FWidget::WM_Rotate)
 		{
-			TestScale.X += Scale.GetMax() >= KINDA_SMALL_NUMBER ? Scale.GetMax() : Scale.GetMin();
+			VectorFieldDesignerEditorPtr.Pin()->RotateSelectedForceFields(Rot);
 		}
 
-		VectorFieldBeingEdited.Get()->MarkPackageDirty();
+		else if (WidgetMode == FWidget::WM_Scale)
+		{
+			VectorFieldDesignerEditorPtr.Pin()->ScaleSelectedForceFields(Scale);
+		}
 
 		Invalidate();
 		bHandled = true;
@@ -157,7 +186,22 @@ void FVFDesignerViewportClient::TrackingStarted(const FInputEventState& InInputS
 	if (!bManipulating && bIsDragging)
 	{
 		bManipulating = true;
-		//GEditor->BeginTransaction(FText::FromString(TEXT("Translation")));
+
+		FText TransactionText;
+		switch (WidgetMode)
+		{
+			case FWidget::WM_Translate:
+				TransactionText = LOCTEXT("VectorFieldTransaction", "Translate ForceField");
+				break;
+			case FWidget::WM_Rotate:
+				TransactionText = LOCTEXT("VectorFieldTransaction", "Rotate ForceField");
+				break;
+			case FWidget::WM_Scale:
+				TransactionText = LOCTEXT("VectorFieldTransaction", "Scale ForceField");
+				break;
+		}
+
+		GEditor->BeginTransaction(TransactionText);
 	}
 }
 
@@ -166,7 +210,7 @@ void FVFDesignerViewportClient::TrackingStopped()
 	if (bManipulating)
 	{
 		bManipulating = false;
-		//GEditor->EndTransaction();
+		GEditor->EndTransaction();
 	}
 }
 
@@ -178,35 +222,96 @@ void FVFDesignerViewportClient::SetWidgetMode(FWidget::EWidgetMode NewMode)
 
 bool FVFDesignerViewportClient::CanSetWidgetMode(FWidget::EWidgetMode NewMode) const
 {
-	return true;
+	return !Widget->IsDragging() && VectorFieldDesignerEditorPtr.Pin()->HasSelectedForceFields();
 }
 
 bool FVFDesignerViewportClient::CanCycleWidgetMode() const
 {
-	return true;
+	return !Widget->IsDragging() && VectorFieldDesignerEditorPtr.Pin()->HasSelectedForceFields();
 }
 
 FVector FVFDesignerViewportClient::GetWidgetLocation() const
 {
-	return TestLocation;
+	FTransform Transform = FTransform::Identity;
+	const bool bSelectedForceField = VectorFieldDesignerEditorPtr.Pin()->GetLastSelectedForceFieldTransform(Transform);
+	if (bSelectedForceField)
+	{
+		return Transform.GetLocation();
+	}
+
+	return FVector::ZeroVector;
 }
 
 FMatrix FVFDesignerViewportClient::GetWidgetCoordSystem() const
 {
+	FTransform Transform = FTransform::Identity;
+	const bool bSelectedForceField = VectorFieldDesignerEditorPtr.Pin()->GetLastSelectedForceFieldTransform(Transform);
+	if (bSelectedForceField)
+	{
+		return FRotationMatrix(Transform.GetRotation().Rotator());
+	}
+
 	return FMatrix::Identity;
 }
 
 void FVFDesignerViewportClient::ProcessClick(FSceneView& View, HHitProxy* HitProxy, FKey Key, EInputEvent Event, uint32 HitX, uint32 HitY)
 {
-	if (WidgetMode == FWidget::WM_None)
-		WidgetMode = FWidget::WM_Translate;
-	else
-		WidgetMode = FWidget::WM_None;
+	auto VectorFieldDesignerEditor = VectorFieldDesignerEditorPtr.Pin();
+	if (!VectorFieldDesignerEditor.IsValid())
+	{
+		return;
+	}
+
+	const bool bCtrlDown = Viewport->KeyState(EKeys::LeftControl) || Viewport->KeyState(EKeys::RightControl);
+
+	bool bClearSelectedForceFields = true;
+
+	if (HitProxy)
+	{
+		if (HitProxy->IsA(HSMEForceFieldProxy::StaticGetType()))
+		{
+			HSMEForceFieldProxy* ForceFieldProxy = (HSMEForceFieldProxy*)HitProxy;
+
+			if (VectorFieldDesignerEditor->IsSelectedForceField(ForceFieldProxy->ForceFieldIndex))
+			{
+				if (!bCtrlDown)
+				{
+					VectorFieldDesignerEditor->AddSelectedForceField(ForceFieldProxy->ForceFieldIndex, true);
+				}
+				else
+				{
+					VectorFieldDesignerEditor->RemoveSelectedForceField(ForceFieldProxy->ForceFieldIndex);
+				}
+			}
+			else
+			{
+				VectorFieldDesignerEditor->AddSelectedForceField(ForceFieldProxy->ForceFieldIndex, !bCtrlDown);
+			}
+		}
+
+		if (WidgetMode == FWidget::WM_None)
+			WidgetMode = FWidget::WM_Translate;
+
+		bClearSelectedForceFields = false;
+	}
+
+	if (bClearSelectedForceFields)
+	{
+		VectorFieldDesignerEditor->ClearSelectedForceFields();
+	}
+
+	Invalidate();
 }
 
 bool FVFDesignerViewportClient::InputKey(FViewport* InViewport, int32 ControllerId, FKey Key, EInputEvent Event, float AmountDepressed, bool bGamepad)
 {
 	bool bHandled = false;
+
+	if (Key == EKeys::Delete)
+	{
+		VectorFieldDesignerEditorPtr.Pin()->DestroySelectedForceFields();
+		bHandled = true;
+	}
 
 	return bHandled ? true : FEditorViewportClient::InputKey(InViewport, ControllerId, Key, Event, AmountDepressed, bGamepad);
 }
@@ -220,3 +325,5 @@ void FVFDesignerViewportClient::AddReferencedObjects(FReferenceCollector& Collec
 {
 	FEditorViewportClient::AddReferencedObjects(Collector);
 }
+
+#undef LOCTEXT_NAMESPACE 

@@ -33,6 +33,7 @@ public:
 	{}
 
 		SLATE_ATTRIBUTE(UCustomizableVectorField*, VectorFieldBeingEdited)
+		SLATE_ARGUMENT(TWeakPtr<FVectorFieldDesignerWindow>, VectorFieldDesignerWindow)
 
 	SLATE_END_ARGS()
 
@@ -54,6 +55,7 @@ public:
 
 private:
 	TAttribute<UCustomizableVectorField*> VectorFieldBeingEdited;
+	TWeakPtr<FVectorFieldDesignerWindow> VectorFieldDesignerWindowPtr;
 	TSharedPtr<FVFDesignerViewportClient> EditorViewportClient;
 
 };

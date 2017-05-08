@@ -33,9 +33,10 @@ TSharedRef<SWidget> SVectorFieldDesignerViewportToolbar::GenerateShowMenu() cons
 	return ShowMenuBuilder.MakeWidget();
 }
 
-void SVectorFieldDesignerViewport::Construct(const FArguments & InArgs)
+void SVectorFieldDesignerViewport::Construct(const FArguments& InArgs)
 {
 	VectorFieldBeingEdited = InArgs._VectorFieldBeingEdited;
+	VectorFieldDesignerWindowPtr = InArgs._VectorFieldDesignerWindow;
 
 	SEditorViewport::Construct(SEditorViewport::FArguments());
 }
@@ -48,7 +49,7 @@ void SVectorFieldDesignerViewport::BindCommands()
 
 TSharedRef<FEditorViewportClient> SVectorFieldDesignerViewport::MakeEditorViewportClient()
 {
-	EditorViewportClient = MakeShareable(new FVFDesignerViewportClient(VectorFieldBeingEdited));
+	EditorViewportClient = MakeShareable(new FVFDesignerViewportClient(VectorFieldDesignerWindowPtr, VectorFieldBeingEdited));
 
 	return EditorViewportClient.ToSharedRef();
 }
