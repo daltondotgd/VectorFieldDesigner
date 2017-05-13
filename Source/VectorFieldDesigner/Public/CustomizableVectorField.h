@@ -29,12 +29,7 @@ public:
 	void CreateWindForceField();
 
 private:
-// Exclude some important shit from shipping build
-//#if !UE_BUILD_SHIPPING
-	class FVectorFieldResource* Resource;
-	FByteBulkData SourceData;
-//#endif
-
 	int32 GenerateNewUniqueForceFieldId();
 	int32 UniqueForceFieldIdCounter;
+
 };

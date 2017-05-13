@@ -64,6 +64,7 @@ public:
 
 private:
 	UCustomizableVectorField* VectorFieldBeingEdited;
+	TSharedPtr<class SVectorFieldDesignerViewport> VectorFieldDesignerViewportPtr;
 	TArray<int> SelectedForceFieldIds;
 
 };

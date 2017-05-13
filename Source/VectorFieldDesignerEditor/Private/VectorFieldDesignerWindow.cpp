@@ -231,6 +231,8 @@ void FVectorFieldDesignerWindow::CreateSphericalForceField()
 	VectorFieldBeingEdited->CreateSphericalForceField();
 	SelectedForceFieldIds.Empty();
 	SelectedForceFieldIds.Add(VectorFieldBeingEdited->ForceFields.Find(VectorFieldBeingEdited->ForceFields.Last()));
+	VectorFieldDesignerViewportPtr->GetViewportClient().Get()->Invalidate();
+	
 }
 
 void FVectorFieldDesignerWindow::CreateVortexForceField()
@@ -238,6 +240,7 @@ void FVectorFieldDesignerWindow::CreateVortexForceField()
 	VectorFieldBeingEdited->CreateVortexForceField();
 	SelectedForceFieldIds.Empty();
 	SelectedForceFieldIds.Add(VectorFieldBeingEdited->ForceFields.Find(VectorFieldBeingEdited->ForceFields.Last()));
+	VectorFieldDesignerViewportPtr->GetViewportClient().Get()->Invalidate();
 }
 
 void FVectorFieldDesignerWindow::CreateWindForceField()
@@ -245,6 +248,7 @@ void FVectorFieldDesignerWindow::CreateWindForceField()
 	VectorFieldBeingEdited->CreateWindForceField();
 	SelectedForceFieldIds.Empty();
 	SelectedForceFieldIds.Add(VectorFieldBeingEdited->ForceFields.Find(VectorFieldBeingEdited->ForceFields.Last()));
+	VectorFieldDesignerViewportPtr->GetViewportClient().Get()->Invalidate();
 }
 
 void FVectorFieldDesignerWindow::RegisterTabSpawners(const TSharedRef<class FTabManager>& InTabManager)
@@ -291,13 +295,15 @@ TSharedRef<SDockTab> FVectorFieldDesignerWindow::SpawnTab_Viewport(const FSpawnT
 {
 	TSharedPtr<FVectorFieldDesignerWindow> VectorFieldDesignerWindowPtr = SharedThis(this);
 
+	VectorFieldDesignerViewportPtr = SNew(SVectorFieldDesignerViewport)
+		.VectorFieldBeingEdited(VectorFieldBeingEdited)
+		.VectorFieldDesignerWindow(VectorFieldDesignerWindowPtr);
+
 	return SNew(SDockTab)
 		.Icon(FEditorStyle::GetBrush("LevelEditor.Tabs.Viewport"))
 		.Label(LOCTEXT("ViewportTab", "Viewport"))
 		[
-			SNew(SVectorFieldDesignerViewport)
-			.VectorFieldBeingEdited(VectorFieldBeingEdited)
-			.VectorFieldDesignerWindow(VectorFieldDesignerWindowPtr)
+			VectorFieldDesignerViewportPtr.ToSharedRef()
 		];
 }
 
@@ -308,14 +314,15 @@ void FVectorFieldDesignerWindow::AddReferencedObjects(FReferenceCollector& Colle
 
 void FVectorFieldDesignerWindow::AddSelectedForceField(int Index, bool bClearSelection)
 {
-	check(IsForceFieldValid(Index));
+	//check(IsForceFieldValid(Index));
 
 	if (bClearSelection)
 	{
 		ClearSelectedForceFields();
 	}
 
-	SelectedForceFieldIds.Add(Index);
+	if (IsForceFieldValid(Index))
+		SelectedForceFieldIds.Add(Index);
 }
 
 void FVectorFieldDesignerWindow::RemoveSelectedForceField(int Index)

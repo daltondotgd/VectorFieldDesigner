@@ -63,6 +63,12 @@ void UCustomizableVectorField::CreateWindForceField()
 	ForceFields.Add(ForceField);
 }
 
+//void UCustomizableVectorField::CalculateSourceData()
+//{
+//	for (int i = 0; i < SizeX * SizeY * SizeZ; ++i)
+//		SourceData.AddObject(FVector(20.0f));
+//}
+
 int32 UCustomizableVectorField::GenerateNewUniqueForceFieldId()
 {
 	return ++UniqueForceFieldIdCounter;

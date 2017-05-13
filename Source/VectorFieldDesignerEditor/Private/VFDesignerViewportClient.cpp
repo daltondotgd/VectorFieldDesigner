@@ -88,6 +88,7 @@ void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInter
 				FVector Direction = FVector(0.0f);
 				FColor Color = FColor::Green;
 				float Thickness = 0.0f;
+				uint8 Depth = SDPG_World;
 
 				for (int32 Index = 0; Index < VectorFieldBeingEdited.Get()->ForceFields.Num(); ++Index)
 				{
@@ -99,6 +100,7 @@ void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInter
 						{
 							Color = FColor::Cyan;
 							Thickness = 0.5f;
+							Depth = SDPG_Foreground;
 						}
 					}
 				}
@@ -113,7 +115,7 @@ void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInter
 					FTransform Transform;
 					Transform.SetLocation(Location);
 					Transform.SetRotation(FRotationMatrix::MakeFromX(Direction).ToQuat());
-					DrawDirectionalArrow(PDI, Transform.ToMatrixNoScale(), Color, Direction.Size(), 1.0f, SDPG_World);
+					DrawDirectionalArrow(PDI, Transform.ToMatrixNoScale(), Color, Direction.Size(), 1.0f, Depth, Thickness);
 				}
 			}
 		}
@@ -124,11 +126,11 @@ void FVFDesignerViewportClient::DrawCanvas(FViewport& InViewport, FSceneView& Vi
 {
 	FEditorViewportClient::DrawCanvas(InViewport, View, Canvas);
 
-	const bool bIsHitTesting = Canvas.IsHitTesting();
-	if (!bIsHitTesting)
-	{
-		Canvas.SetHitProxy(nullptr);
-	}
+	//const bool bIsHitTesting = Canvas.IsHitTesting();
+	//if (!bIsHitTesting)
+	//{
+	//	Canvas.SetHitProxy(nullptr);
+	//}
 }
 
 void FVFDesignerViewportClient::Tick(float DeltaSeconds)
@@ -263,6 +265,8 @@ void FVFDesignerViewportClient::ProcessClick(FSceneView& View, HHitProxy* HitPro
 	}
 
 	const bool bCtrlDown = Viewport->KeyState(EKeys::LeftControl) || Viewport->KeyState(EKeys::RightControl);
+	const bool bShiftDown = Viewport->KeyState(EKeys::LeftShift) || Viewport->KeyState(EKeys::RightShift);
+	const bool bShouldMultiSelect = bCtrlDown && bShiftDown;
 
 	bool bClearSelectedForceFields = true;
 
@@ -274,7 +278,7 @@ void FVFDesignerViewportClient::ProcessClick(FSceneView& View, HHitProxy* HitPro
 
 			if (VectorFieldDesignerEditor->IsSelectedForceField(ForceFieldProxy->ForceFieldIndex))
 			{
-				if (!bCtrlDown)
+				if (!bShouldMultiSelect)
 				{
 					VectorFieldDesignerEditor->AddSelectedForceField(ForceFieldProxy->ForceFieldIndex, true);
 				}
@@ -285,7 +289,7 @@ void FVFDesignerViewportClient::ProcessClick(FSceneView& View, HHitProxy* HitPro
 			}
 			else
 			{
-				VectorFieldDesignerEditor->AddSelectedForceField(ForceFieldProxy->ForceFieldIndex, !bCtrlDown);
+				VectorFieldDesignerEditor->AddSelectedForceField(ForceFieldProxy->ForceFieldIndex, !bShouldMultiSelect);
 			}
 		}
 
