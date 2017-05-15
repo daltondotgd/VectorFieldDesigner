@@ -30,6 +30,8 @@ public:
 	virtual void ExtendToolbar();
 	virtual void BindEditorCommands();
 
+	void SaveAsVectorField();
+
 	void CreateSphericalForceField();
 	void CreateVortexForceField();
 	void CreateWindForceField();

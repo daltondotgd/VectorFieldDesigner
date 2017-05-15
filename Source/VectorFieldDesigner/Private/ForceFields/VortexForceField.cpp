@@ -19,7 +19,7 @@ FVector UVortexForceField::ForceAtLocation(const FVector& VectorLocation) const
 	Direction.Normalize();
 	Direction *= Length;
 
-	return FRotator::MakeFromEuler(FVector(0.0f, 0.0f, 90.0f * 1.0f - Length)).Quaternion() * Direction * (bInvertDirection ? -1.0f : 1.0f);
+	return FRotator::MakeFromEuler(FVector(0.0f, 0.0f, 90.0f * (1.0f - Length))).Quaternion() * Direction * (bInvertDirection ? -1.0f : 1.0f);
 }
 
 void UVortexForceField::Draw(FPrimitiveDrawInterface* PDI, const FColor& Color) const

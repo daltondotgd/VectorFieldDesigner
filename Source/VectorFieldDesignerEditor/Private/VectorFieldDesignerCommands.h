@@ -18,6 +18,8 @@ public:
 
 	}
 
+	TSharedPtr<FUICommandInfo> SaveAsVectorField;
+
 	TSharedPtr<FUICommandInfo> CreateSphericalForceField;
 	TSharedPtr<FUICommandInfo> CreateVortexForceField;
 	TSharedPtr<FUICommandInfo> CreateWindForceField;

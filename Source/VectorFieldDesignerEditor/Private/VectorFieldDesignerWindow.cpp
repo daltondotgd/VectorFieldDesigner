@@ -12,6 +12,10 @@
 #include "Framework/Commands/Commands.h"
 #include "Editor.h"
 
+#include "AssetRegistryModule.h"
+#include "VectorField/VectorFieldStatic.h"
+#include "Factories/VectorFieldStaticFactory.h"
+
 #define LOCTEXT_NAMESPACE "FVectorFieldDesignerWindow"
 
 class SCustomizableVectorFieldPropertiesTabBody : public SSingleObjectDetailsPanel
@@ -158,6 +162,14 @@ void FVectorFieldDesignerWindow::ExtendToolbar()
 			ToolbarBuilder.BeginSection("Toolbar");
 			{
 
+				TSharedPtr<FUICommandInfo> SaveAsVectorFieldCommand = FVectorFieldDesignerCommands::Get().SaveAsVectorField;
+				ToolbarBuilder.AddToolBarButton(SaveAsVectorFieldCommand,
+					NAME_None,
+					FText::FromString(TEXT("Save Project")), // CreateSphericalForceFieldCommand->GetLabel(),
+					SaveAsVectorFieldCommand->GetDescription(),
+					FSlateIcon(FEditorStyle::GetStyleSetName(), "AssetEditor.SaveAssetAs")
+				);
+
 				TSharedPtr<FUICommandInfo> CreateSphericalForceFieldCommand = FVectorFieldDesignerCommands::Get().CreateSphericalForceField;
 				ToolbarBuilder.AddToolBarButton(CreateSphericalForceFieldCommand,
 					NAME_None,
@@ -211,6 +223,11 @@ void FVectorFieldDesignerWindow::BindEditorCommands()
 	const FVectorFieldDesignerCommands& Commands = FVectorFieldDesignerCommands::Get();
 
 	ToolkitCommands->MapAction(
+		Commands.SaveAsVectorField,
+		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::SaveAsVectorField)
+	);
+
+	ToolkitCommands->MapAction(
 		Commands.CreateSphericalForceField,
 		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::CreateSphericalForceField)
 	);
@@ -224,6 +241,50 @@ void FVectorFieldDesignerWindow::BindEditorCommands()
 		Commands.CreateWindForceField,
 		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::CreateWindForceField)
 	);
+}
+
+void FVectorFieldDesignerWindow::SaveAsVectorField()
+{
+	UE_LOG(LogTemp, Warning, TEXT("dupa! %s | %s"), *VectorFieldBeingEdited->GetName(), *VectorFieldBeingEdited->GetPathName());
+	FString FinalPackageName = TEXT("/Game/testpackage");
+	FString AssetName = FString(TEXT("VectorField"));
+	UPackage* Package = CreatePackage(NULL, *FinalPackageName);
+
+	UPackage* OutermostPkg = Package->GetOutermost();
+
+	UVectorFieldStatic* VectorField = NewObject<UVectorFieldStatic>(OutermostPkg, UVectorFieldStatic::StaticClass(), *AssetName, RF_Standalone | RF_Public);
+
+	VectorField->SizeX = VectorFieldBeingEdited->GridX;
+	VectorField->SizeY = VectorFieldBeingEdited->GridY;
+	VectorField->SizeZ = VectorFieldBeingEdited->GridZ;
+	VectorField->Bounds = VectorFieldBeingEdited->Bounds;
+
+	//VectorField->AssetImportData->Update(CurrentFilename);
+
+	// Convert vectors to 16-bit FP and store.
+	const TArray<FVector> SrcValues = VectorFieldBeingEdited->CalculateVectorField();
+	const int32 VectorCount = SrcValues.Num();
+	const int32 DestBufferSize = VectorCount * sizeof(FFloat16Color);
+	VectorField->SourceData.Lock(LOCK_READ_WRITE);
+	FFloat16Color* RESTRICT DestValues = (FFloat16Color*)VectorField->SourceData.Realloc(DestBufferSize);
+	int Index = 0;
+	for (int32 VectorIndex = 0; VectorIndex < VectorCount; ++VectorIndex)
+	{
+		DestValues->R = SrcValues[VectorIndex].X;
+		DestValues->G = SrcValues[VectorIndex].Y;
+		DestValues->B = SrcValues[VectorIndex].Z;
+		DestValues->A = 0.0f;
+		++DestValues;
+	}
+	VectorField->SourceData.Unlock();
+
+	VectorField->InitResource();
+
+	FAssetRegistryModule::AssetCreated(VectorField);
+	VectorField->MarkPackageDirty();
+	Package->SetDirtyFlag(true);
+	VectorField->PostEditChange();
+	VectorField->AddToRoot();
 }
 
 void FVectorFieldDesignerWindow::CreateSphericalForceField()

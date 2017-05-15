@@ -76,27 +76,31 @@ void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInter
 	FBox Bounds = VectorFieldBeingEdited.Get()->Bounds;
 	DrawWireBox(PDI, Bounds, FColor::Blue, SDPG_World, 1.0f);
 
-	int Resolution = VectorFieldBeingEdited.Get()->Resolution + 1;
+	int GridX = VectorFieldBeingEdited.Get()->GridX;
+	int GridY = VectorFieldBeingEdited.Get()->GridY;
+	int GridZ = VectorFieldBeingEdited.Get()->GridZ;
 
-	for (int i = 0; i < Resolution; ++i)
+	FVector GridResolution((float)GridX, (float)GridY, (float)GridZ);
+
+	for (int z = 0; z < GridZ; ++z)
 	{
-		for (int j = 0; j < Resolution; ++j)
+		for (int y = 0; y < GridY; ++y)
 		{
-			for (int k = 0; k < Resolution; ++k)
+			for (int x = 0; x < GridX; ++x)
 			{
-				FVector Location = Bounds.GetExtent() * 2.0f * (FVector((float)i, (float)j, (float)k) + 0.5f) / FVector((float)Resolution) + Bounds.Min;
-				FVector Direction = FVector(0.0f);
+				UE_LOG(LogTemp, Warning, TEXT("%d %d %d | %s | %s"), GridX, GridY, GridZ, *GridResolution.ToString(), *Bounds.ToString());
+				FVector Location = Bounds.GetExtent() * 2.0f * (FVector((float)x, (float)y, (float)z) + 0.5f) / GridResolution + Bounds.Min;
+				FVector Direction = VectorFieldBeingEdited.Get()->CalculateVector(Location);
 				FColor Color = FColor::Green;
 				float Thickness = 0.0f;
 				uint8 Depth = SDPG_World;
 
 				for (int32 Index = 0; Index < VectorFieldBeingEdited.Get()->ForceFields.Num(); ++Index)
 				{
-					UForceFieldBase* ForceField = VectorFieldBeingEdited.Get()->ForceFields[Index];
-					if (ForceField->IsInRange(Location))
+					if (VectorFieldDesignerEditor->IsSelectedForceField(Index))
 					{
-						Direction += ForceField->ForceAtLocation(Location) * ForceField->Force;
-						if (VectorFieldDesignerEditor->IsSelectedForceField(Index))
+						UForceFieldBase* ForceField = VectorFieldBeingEdited.Get()->ForceFields[Index];
+						if (ForceField->IsInRange(Location))
 						{
 							Color = FColor::Cyan;
 							Thickness = 0.5f;

@@ -19,7 +19,13 @@ public:
 	virtual void InitInstance(class FVectorFieldInstance* Instance, bool bPreviewInstance) override;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Customizable VectorField", meta = (ClampMin = "0", ClampMax = "64", UIMin = "1", UIMax = "32"))
-	int32 Resolution;
+	int32 GridX;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Customizable VectorField", meta = (ClampMin = "0", ClampMax = "64", UIMin = "1", UIMax = "32"))
+	int32 GridY;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Customizable VectorField", meta = (ClampMin = "0", ClampMax = "64", UIMin = "1", UIMax = "32"))
+	int32 GridZ;
 
 	UPROPERTY()
 	TArray<UForceFieldBase*> ForceFields;
@@ -27,6 +33,9 @@ public:
 	void CreateSphericalForceField();
 	void CreateVortexForceField();
 	void CreateWindForceField();
+
+	FVector CalculateVector(FVector Location);
+	TArray<FVector> CalculateVectorField();
 
 private:
 	int32 GenerateNewUniqueForceFieldId();
