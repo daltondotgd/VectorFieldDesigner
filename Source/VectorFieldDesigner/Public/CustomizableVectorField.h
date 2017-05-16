@@ -30,6 +30,9 @@ public:
 	UPROPERTY()
 	TArray<UForceFieldBase*> ForceFields;
 
+	UPROPERTY()
+	FString AssetPath;
+
 	void CreateSphericalForceField();
 	void CreateVortexForceField();
 	void CreateWindForceField();

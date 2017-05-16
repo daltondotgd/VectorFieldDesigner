@@ -88,7 +88,6 @@ void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInter
 		{
 			for (int x = 0; x < GridX; ++x)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("%d %d %d | %s | %s"), GridX, GridY, GridZ, *GridResolution.ToString(), *Bounds.ToString());
 				FVector Location = Bounds.GetExtent() * 2.0f * (FVector((float)x, (float)y, (float)z) + 0.5f) / GridResolution + Bounds.Min;
 				FVector Direction = VectorFieldBeingEdited.Get()->CalculateVector(Location);
 				FColor Color = FColor::Green;

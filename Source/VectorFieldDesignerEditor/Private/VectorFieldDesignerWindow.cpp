@@ -15,8 +15,45 @@
 #include "AssetRegistryModule.h"
 #include "VectorField/VectorFieldStatic.h"
 #include "Factories/VectorFieldStaticFactory.h"
+#include "FileHelpers.h"
+#include "IContentBrowserSingleton.h"
+#include "ModuleManager.h"
+#include "ContentBrowserModule.h"
 
 #define LOCTEXT_NAMESPACE "FVectorFieldDesignerWindow"
+
+static bool OpenSaveAsDialog(UClass* SavedClass, const FString& InDefaultPath, const FString& InNewNameSuggestion, FString& OutPackageName)
+{
+	FString DefaultPath = InDefaultPath;
+
+	if (DefaultPath.IsEmpty())
+	{
+		DefaultPath = TEXT("/Game/VectorFields");
+	}
+
+	FString NewNameSuggestion = InNewNameSuggestion;
+	check(!NewNameSuggestion.IsEmpty());
+
+	FSaveAssetDialogConfig SaveAssetDialogConfig;
+	{
+		SaveAssetDialogConfig.DefaultPath = DefaultPath;
+		SaveAssetDialogConfig.DefaultAssetName = NewNameSuggestion;
+		SaveAssetDialogConfig.AssetClassNames.Add(SavedClass->GetFName());
+		SaveAssetDialogConfig.ExistingAssetPolicy = ESaveAssetDialogExistingAssetPolicy::AllowButWarn;
+		SaveAssetDialogConfig.DialogTitleOverride = LOCTEXT("SaveAssetDialogTitle", "Save Asset As");
+	}
+
+	FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	FString SaveObjectPath = ContentBrowserModule.Get().CreateModalSaveAssetDialog(SaveAssetDialogConfig);
+
+	if (!SaveObjectPath.IsEmpty())
+	{
+		OutPackageName = FPackageName::ObjectPathToPackageName(SaveObjectPath);
+		return true;
+	}
+
+	return false;
+}
 
 class SCustomizableVectorFieldPropertiesTabBody : public SSingleObjectDetailsPanel
 {
@@ -176,7 +213,7 @@ void FVectorFieldDesignerWindow::ExtendToolbar()
 					FText::FromString(TEXT("Spherical")), // CreateSphericalForceFieldCommand->GetLabel(),
 					CreateSphericalForceFieldCommand->GetDescription()
 					//,
-					//FSlateIcon(FEditorStyle::GetStyleSetName(), "SoundCueGraphEditor.PlayCue")
+					//FSlateIcon(FVectorFieldDesignerStyle::GetStyleSetName(), "VFDesigner.CreateSphericalForceField")
 				);
 
 				TSharedPtr<FUICommandInfo> CreateVortexForceFieldCommand = FVectorFieldDesignerCommands::Get().CreateVortexForceField;
@@ -245,46 +282,94 @@ void FVectorFieldDesignerWindow::BindEditorCommands()
 
 void FVectorFieldDesignerWindow::SaveAsVectorField()
 {
-	UE_LOG(LogTemp, Warning, TEXT("dupa! %s | %s"), *VectorFieldBeingEdited->GetName(), *VectorFieldBeingEdited->GetPathName());
-	FString FinalPackageName = TEXT("/Game/testpackage");
-	FString AssetName = FString(TEXT("VectorField"));
-	UPackage* Package = CreatePackage(NULL, *FinalPackageName);
+	bool bCreateNewPackage = VectorFieldBeingEdited->AssetPath.IsEmpty() || FPaths::FileExists(VectorFieldBeingEdited->AssetPath);
 
-	UPackage* OutermostPkg = Package->GetOutermost();
-
-	UVectorFieldStatic* VectorField = NewObject<UVectorFieldStatic>(OutermostPkg, UVectorFieldStatic::StaticClass(), *AssetName, RF_Standalone | RF_Public);
-
-	VectorField->SizeX = VectorFieldBeingEdited->GridX;
-	VectorField->SizeY = VectorFieldBeingEdited->GridY;
-	VectorField->SizeZ = VectorFieldBeingEdited->GridZ;
-	VectorField->Bounds = VectorFieldBeingEdited->Bounds;
-
-	//VectorField->AssetImportData->Update(CurrentFilename);
-
-	// Convert vectors to 16-bit FP and store.
-	const TArray<FVector> SrcValues = VectorFieldBeingEdited->CalculateVectorField();
-	const int32 VectorCount = SrcValues.Num();
-	const int32 DestBufferSize = VectorCount * sizeof(FFloat16Color);
-	VectorField->SourceData.Lock(LOCK_READ_WRITE);
-	FFloat16Color* RESTRICT DestValues = (FFloat16Color*)VectorField->SourceData.Realloc(DestBufferSize);
-	int Index = 0;
-	for (int32 VectorIndex = 0; VectorIndex < VectorCount; ++VectorIndex)
+	if (bCreateNewPackage)
 	{
-		DestValues->R = SrcValues[VectorIndex].X;
-		DestValues->G = SrcValues[VectorIndex].Y;
-		DestValues->B = SrcValues[VectorIndex].Z;
-		DestValues->A = 0.0f;
-		++DestValues;
+		FString PackageName;
+		bool bSaveFileLocationSelected = OpenSaveAsDialog(
+			UVectorFieldStatic::StaticClass(),
+			FPackageName::GetLongPackagePath(VectorFieldBeingEdited->GetPathName()),
+			FString::Printf(TEXT("VF_%s"), *VectorFieldBeingEdited->GetName()),
+			PackageName);
+
+		if (bSaveFileLocationSelected)
+		{
+			FString AssetName = FString(TEXT("VectorField"));
+			UPackage* Package = CreatePackage(NULL, *PackageName);
+
+			UPackage* OutermostPkg = Package->GetOutermost();
+
+			UVectorFieldStatic* VectorField = NewObject<UVectorFieldStatic>(OutermostPkg, UVectorFieldStatic::StaticClass(), *FPaths::GetBaseFilename(PackageName), RF_Standalone | RF_Public);
+
+			VectorField->SizeX = VectorFieldBeingEdited->GridX;
+			VectorField->SizeY = VectorFieldBeingEdited->GridY;
+			VectorField->SizeZ = VectorFieldBeingEdited->GridZ;
+			VectorField->Bounds = VectorFieldBeingEdited->Bounds;
+
+			//VectorField->AssetImportData->Update(CurrentFilename);
+
+			// Convert vectors to 16-bit FP and store.
+			const TArray<FVector> SrcValues = VectorFieldBeingEdited->CalculateVectorField();
+			const int32 VectorCount = SrcValues.Num();
+			const int32 DestBufferSize = VectorCount * sizeof(FFloat16Color);
+			VectorField->SourceData.Lock(LOCK_READ_WRITE);
+			FFloat16Color* RESTRICT DestValues = (FFloat16Color*)VectorField->SourceData.Realloc(DestBufferSize);
+			int Index = 0;
+			for (int32 VectorIndex = 0; VectorIndex < VectorCount; ++VectorIndex)
+			{
+				DestValues->R = SrcValues[VectorIndex].X;
+				DestValues->G = SrcValues[VectorIndex].Y;
+				DestValues->B = SrcValues[VectorIndex].Z;
+				DestValues->A = 0.0f;
+				++DestValues;
+			}
+			VectorField->SourceData.Unlock();
+
+			VectorField->InitResource();
+
+			FAssetRegistryModule::AssetCreated(VectorField);
+			VectorField->MarkPackageDirty();
+			Package->SetDirtyFlag(true);
+			VectorField->PostEditChange();
+			VectorField->AddToRoot();
+
+			VectorFieldBeingEdited->AssetPath = VectorField->GetPathName();
+			VectorFieldBeingEdited->MarkPackageDirty();
+		}
 	}
-	VectorField->SourceData.Unlock();
+	else
+	{
+		UVectorFieldStatic* VectorField = Cast<UVectorFieldStatic>(StaticLoadObject(UVectorFieldStatic::StaticClass(), NULL, *VectorFieldBeingEdited->AssetPath));
 
-	VectorField->InitResource();
+		VectorField->SizeX = VectorFieldBeingEdited->GridX;
+		VectorField->SizeY = VectorFieldBeingEdited->GridY;
+		VectorField->SizeZ = VectorFieldBeingEdited->GridZ;
+		VectorField->Bounds = VectorFieldBeingEdited->Bounds;
 
-	FAssetRegistryModule::AssetCreated(VectorField);
-	VectorField->MarkPackageDirty();
-	Package->SetDirtyFlag(true);
-	VectorField->PostEditChange();
-	VectorField->AddToRoot();
+		//VectorField->AssetImportData->Update(CurrentFilename);
+
+		// Convert vectors to 16-bit FP and store.
+		const TArray<FVector> SrcValues = VectorFieldBeingEdited->CalculateVectorField();
+		const int32 VectorCount = SrcValues.Num();
+		const int32 DestBufferSize = VectorCount * sizeof(FFloat16Color);
+		VectorField->SourceData.Lock(LOCK_READ_WRITE);
+		FFloat16Color* RESTRICT DestValues = (FFloat16Color*)VectorField->SourceData.Realloc(DestBufferSize);
+		int Index = 0;
+		for (int32 VectorIndex = 0; VectorIndex < VectorCount; ++VectorIndex)
+		{
+			DestValues->R = SrcValues[VectorIndex].X;
+			DestValues->G = SrcValues[VectorIndex].Y;
+			DestValues->B = SrcValues[VectorIndex].Z;
+			DestValues->A = 0.0f;
+			++DestValues;
+		}
+		VectorField->SourceData.Unlock();
+
+		VectorField->MarkPackageDirty();
+		VectorField->PostEditChange();
+		VectorField->AddToRoot();
+	}
 }
 
 void FVectorFieldDesignerWindow::CreateSphericalForceField()

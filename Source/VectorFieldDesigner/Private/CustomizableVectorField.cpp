@@ -13,6 +13,7 @@ UCustomizableVectorField::UCustomizableVectorField(const FObjectInitializer& Obj
 	, GridY(8)
 	, GridZ(8)
 	, UniqueForceFieldIdCounter(-1)
+	, AssetPath(TEXT(""))
 {
 	Bounds.Min = FVector(-200.0f);
 	Bounds.Max = FVector(200.0f);
