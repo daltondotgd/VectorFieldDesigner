@@ -19,3 +19,8 @@ UObject* UCustomizableVectorFieldFactoryNew::FactoryCreateNew(UClass* InClass, U
 	UCustomizableVectorField* NewCustomizableVectorField = NewObject<UCustomizableVectorField>(InParent, InClass, InName, Flags | RF_Transactional);
 	return NewCustomizableVectorField;
 }
+
+FString UCustomizableVectorFieldFactoryNew::GetDefaultNewAssetName() const
+{
+	return TEXT("VFDP_VectorFieldDesignerProject");
+}

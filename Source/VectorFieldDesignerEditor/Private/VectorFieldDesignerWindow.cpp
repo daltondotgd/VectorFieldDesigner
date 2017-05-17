@@ -19,10 +19,11 @@
 #include "IContentBrowserSingleton.h"
 #include "ModuleManager.h"
 #include "ContentBrowserModule.h"
+#include "ObjectTools.h"
 
 #define LOCTEXT_NAMESPACE "FVectorFieldDesignerWindow"
 
-static bool OpenSaveAsDialog(UClass* SavedClass, const FString& InDefaultPath, const FString& InNewNameSuggestion, FString& OutPackageName)
+static bool OpenSaveAsDialog(UClass* SavedClass, const FString& InDefaultPath, const FString& InNewNameSuggestion, FString& OutPackageName, FString& OutObjectPath)
 {
 	FString DefaultPath = InDefaultPath;
 
@@ -49,6 +50,7 @@ static bool OpenSaveAsDialog(UClass* SavedClass, const FString& InDefaultPath, c
 	if (!SaveObjectPath.IsEmpty())
 	{
 		OutPackageName = FPackageName::ObjectPathToPackageName(SaveObjectPath);
+		OutObjectPath = SaveObjectPath;
 		return true;
 	}
 
@@ -196,42 +198,50 @@ void FVectorFieldDesignerWindow::ExtendToolbar()
 	{
 		static void FillToolbar(FToolBarBuilder& ToolbarBuilder)
 		{
-			ToolbarBuilder.BeginSection("Toolbar");
+			ToolbarBuilder.BeginSection("Export");
 			{
-
-				TSharedPtr<FUICommandInfo> SaveAsVectorFieldCommand = FVectorFieldDesignerCommands::Get().SaveAsVectorField;
-				ToolbarBuilder.AddToolBarButton(SaveAsVectorFieldCommand,
+				TSharedPtr<FUICommandInfo> ExportVectorFieldCommand = FVectorFieldDesignerCommands::Get().ExportVectorField;
+				ToolbarBuilder.AddToolBarButton(ExportVectorFieldCommand,
 					NAME_None,
-					FText::FromString(TEXT("Save Project")), // CreateSphericalForceFieldCommand->GetLabel(),
-					SaveAsVectorFieldCommand->GetDescription(),
-					FSlateIcon(FEditorStyle::GetStyleSetName(), "AssetEditor.SaveAssetAs")
+					LOCTEXT("VectorFieldEditorWindowExport", "Export"),
+					ExportVectorFieldCommand->GetDescription(),
+					FSlateIcon(FEditorStyle::GetStyleSetName(), "AssetEditor.SaveAsset")
 				);
 
+				TSharedPtr<FUICommandInfo> ExportVectorFieldCommandAs = FVectorFieldDesignerCommands::Get().ExportVectorFieldAs;
+				ToolbarBuilder.AddToolBarButton(ExportVectorFieldCommandAs,
+					NAME_None,
+					LOCTEXT("VectorFieldEditorWindowExportAs", "Export As"),
+					ExportVectorFieldCommand->GetDescription(),
+					FSlateIcon(FEditorStyle::GetStyleSetName(), "AssetEditor.SaveAssetAs")
+				);
+			}
+			ToolbarBuilder.EndSection();
+
+			ToolbarBuilder.BeginSection("ForceFields");
+			{
 				TSharedPtr<FUICommandInfo> CreateSphericalForceFieldCommand = FVectorFieldDesignerCommands::Get().CreateSphericalForceField;
 				ToolbarBuilder.AddToolBarButton(CreateSphericalForceFieldCommand,
 					NAME_None,
-					FText::FromString(TEXT("Spherical")), // CreateSphericalForceFieldCommand->GetLabel(),
-					CreateSphericalForceFieldCommand->GetDescription()
-					//,
-					//FSlateIcon(FVectorFieldDesignerStyle::GetStyleSetName(), "VFDesigner.CreateSphericalForceField")
+					LOCTEXT("VectorFieldEditorWindowCreateSphericalForceField", "Spherical"),
+					CreateSphericalForceFieldCommand->GetDescription(),
+					FSlateIcon(FVectorFieldDesignerStyle::GetStyleSetName(), "VFDesigner.CreateSphericalForceField")
 				);
 
 				TSharedPtr<FUICommandInfo> CreateVortexForceFieldCommand = FVectorFieldDesignerCommands::Get().CreateVortexForceField;
 				ToolbarBuilder.AddToolBarButton(CreateVortexForceFieldCommand,
 					NAME_None,
-					FText::FromString(TEXT("Vortex")), // CreateVortexForceFieldCommand->GetLabel(),
-					CreateVortexForceFieldCommand->GetDescription()
-					//,
-					//FSlateIcon(FEditorStyle::GetStyleSetName(), "SoundCueGraphEditor.StopCueNode")
+					LOCTEXT("VectorFieldEditorWindowCreateVortexForceField", "Vortex"),
+					CreateVortexForceFieldCommand->GetDescription(),
+					FSlateIcon(FVectorFieldDesignerStyle::GetStyleSetName(), "VFDesigner.CreateVortexForceField")
 				);
 
 				TSharedPtr<FUICommandInfo> CreateWindForceFieldCommand = FVectorFieldDesignerCommands::Get().CreateWindForceField;
 				ToolbarBuilder.AddToolBarButton(CreateWindForceFieldCommand,
 					NAME_None,
-					FText::FromString(TEXT("Wind")), // CreateWindForceFieldCommand->GetLabel(),
-					CreateWindForceFieldCommand->GetDescription()
-					//,
-					//FSlateIcon(FEditorStyle::GetStyleSetName(), "SoundCueGraphEditor.StopCueNode")
+					LOCTEXT("VectorFieldEditorWindowCreateWindForceField", "Wind"),
+					CreateWindForceFieldCommand->GetDescription(),
+					FSlateIcon(FVectorFieldDesignerStyle::GetStyleSetName(), "VFDesigner.CreateWindForceField")
 				);
 			}
 			ToolbarBuilder.EndSection();
@@ -260,8 +270,13 @@ void FVectorFieldDesignerWindow::BindEditorCommands()
 	const FVectorFieldDesignerCommands& Commands = FVectorFieldDesignerCommands::Get();
 
 	ToolkitCommands->MapAction(
-		Commands.SaveAsVectorField,
-		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::SaveAsVectorField)
+		Commands.ExportVectorField,
+		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::ExportVectorField)
+	);
+
+	ToolkitCommands->MapAction(
+		Commands.ExportVectorFieldAs,
+		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::ExportVectorFieldAs)
 	);
 
 	ToolkitCommands->MapAction(
@@ -280,121 +295,80 @@ void FVectorFieldDesignerWindow::BindEditorCommands()
 	);
 }
 
-void FVectorFieldDesignerWindow::SaveAsVectorField()
+void FVectorFieldDesignerWindow::ExportVectorField()
 {
 	bool bCreateNewPackage = VectorFieldBeingEdited->AssetPath.IsEmpty() || FPaths::FileExists(VectorFieldBeingEdited->AssetPath);
 
 	if (bCreateNewPackage)
 	{
-		FString PackageName;
-		bool bSaveFileLocationSelected = OpenSaveAsDialog(
-			UVectorFieldStatic::StaticClass(),
-			FPackageName::GetLongPackagePath(VectorFieldBeingEdited->GetPathName()),
-			FString::Printf(TEXT("VF_%s"), *VectorFieldBeingEdited->GetName()),
-			PackageName);
-
-		if (bSaveFileLocationSelected)
-		{
-			FString AssetName = FString(TEXT("VectorField"));
-			UPackage* Package = CreatePackage(NULL, *PackageName);
-
-			UPackage* OutermostPkg = Package->GetOutermost();
-
-			UVectorFieldStatic* VectorField = NewObject<UVectorFieldStatic>(OutermostPkg, UVectorFieldStatic::StaticClass(), *FPaths::GetBaseFilename(PackageName), RF_Standalone | RF_Public);
-
-			VectorField->SizeX = VectorFieldBeingEdited->GridX;
-			VectorField->SizeY = VectorFieldBeingEdited->GridY;
-			VectorField->SizeZ = VectorFieldBeingEdited->GridZ;
-			VectorField->Bounds = VectorFieldBeingEdited->Bounds;
-
-			//VectorField->AssetImportData->Update(CurrentFilename);
-
-			// Convert vectors to 16-bit FP and store.
-			const TArray<FVector> SrcValues = VectorFieldBeingEdited->CalculateVectorField();
-			const int32 VectorCount = SrcValues.Num();
-			const int32 DestBufferSize = VectorCount * sizeof(FFloat16Color);
-			VectorField->SourceData.Lock(LOCK_READ_WRITE);
-			FFloat16Color* RESTRICT DestValues = (FFloat16Color*)VectorField->SourceData.Realloc(DestBufferSize);
-			int Index = 0;
-			for (int32 VectorIndex = 0; VectorIndex < VectorCount; ++VectorIndex)
-			{
-				DestValues->R = SrcValues[VectorIndex].X;
-				DestValues->G = SrcValues[VectorIndex].Y;
-				DestValues->B = SrcValues[VectorIndex].Z;
-				DestValues->A = 0.0f;
-				++DestValues;
-			}
-			VectorField->SourceData.Unlock();
-
-			VectorField->InitResource();
-
-			FAssetRegistryModule::AssetCreated(VectorField);
-			VectorField->MarkPackageDirty();
-			Package->SetDirtyFlag(true);
-			VectorField->PostEditChange();
-			VectorField->AddToRoot();
-
-			VectorFieldBeingEdited->AssetPath = VectorField->GetPathName();
-			VectorFieldBeingEdited->MarkPackageDirty();
-		}
+		ExportVectorFieldAs();
 	}
 	else
 	{
-		UVectorFieldStatic* VectorField = Cast<UVectorFieldStatic>(StaticLoadObject(UVectorFieldStatic::StaticClass(), NULL, *VectorFieldBeingEdited->AssetPath));
+		UpdateVectorFieldStaticPackage(VectorFieldBeingEdited->AssetPath);
+	}
+}
 
-		VectorField->SizeX = VectorFieldBeingEdited->GridX;
-		VectorField->SizeY = VectorFieldBeingEdited->GridY;
-		VectorField->SizeZ = VectorFieldBeingEdited->GridZ;
-		VectorField->Bounds = VectorFieldBeingEdited->Bounds;
+void FVectorFieldDesignerWindow::ExportVectorFieldAs()
+{
+	FString PackageName;
+	FString ObjectPath;
+	bool bSaveFileLocationSelected = OpenSaveAsDialog(
+		UVectorFieldStatic::StaticClass(),
+		FPackageName::GetLongPackagePath(VectorFieldBeingEdited->GetPathName()),
+		FString::Printf(TEXT("VF_%s"), *VectorFieldBeingEdited->GetName()),
+		PackageName,
+		ObjectPath);
 
-		//VectorField->AssetImportData->Update(CurrentFilename);
-
-		// Convert vectors to 16-bit FP and store.
-		const TArray<FVector> SrcValues = VectorFieldBeingEdited->CalculateVectorField();
-		const int32 VectorCount = SrcValues.Num();
-		const int32 DestBufferSize = VectorCount * sizeof(FFloat16Color);
-		VectorField->SourceData.Lock(LOCK_READ_WRITE);
-		FFloat16Color* RESTRICT DestValues = (FFloat16Color*)VectorField->SourceData.Realloc(DestBufferSize);
-		int Index = 0;
-		for (int32 VectorIndex = 0; VectorIndex < VectorCount; ++VectorIndex)
+	if (bSaveFileLocationSelected)
+	{
+		if (FPackageName::DoesPackageExist(PackageName))
 		{
-			DestValues->R = SrcValues[VectorIndex].X;
-			DestValues->G = SrcValues[VectorIndex].Y;
-			DestValues->B = SrcValues[VectorIndex].Z;
-			DestValues->A = 0.0f;
-			++DestValues;
+			UpdateVectorFieldStaticPackage(PackageName);
+			return;
 		}
-		VectorField->SourceData.Unlock();
 
-		VectorField->MarkPackageDirty();
-		VectorField->PostEditChange();
-		VectorField->AddToRoot();
+		CreateVectorFieldStaticPackage(PackageName);
 	}
 }
 
 void FVectorFieldDesignerWindow::CreateSphericalForceField()
 {
+	GEditor->BeginTransaction(LOCTEXT("CreateSphericalForceFieldTransaction", "Create Spherical Force Field"));
+	VectorFieldBeingEdited->Modify();
+
 	VectorFieldBeingEdited->CreateSphericalForceField();
 	SelectedForceFieldIds.Empty();
 	SelectedForceFieldIds.Add(VectorFieldBeingEdited->ForceFields.Find(VectorFieldBeingEdited->ForceFields.Last()));
 	VectorFieldDesignerViewportPtr->GetViewportClient().Get()->Invalidate();
-	
+
+	GEditor->EndTransaction();
 }
 
 void FVectorFieldDesignerWindow::CreateVortexForceField()
 {
+	GEditor->BeginTransaction(LOCTEXT("CreateVortexForceFieldTransaction", "Create Vortex Force Field"));
+	VectorFieldBeingEdited->Modify();
+
 	VectorFieldBeingEdited->CreateVortexForceField();
 	SelectedForceFieldIds.Empty();
 	SelectedForceFieldIds.Add(VectorFieldBeingEdited->ForceFields.Find(VectorFieldBeingEdited->ForceFields.Last()));
 	VectorFieldDesignerViewportPtr->GetViewportClient().Get()->Invalidate();
+
+	GEditor->EndTransaction();
 }
 
 void FVectorFieldDesignerWindow::CreateWindForceField()
 {
+	GEditor->BeginTransaction(LOCTEXT("CreateWindForceFieldTransaction", "Create Wind Force Field"));
+	VectorFieldBeingEdited->Modify();
+
 	VectorFieldBeingEdited->CreateWindForceField();
 	SelectedForceFieldIds.Empty();
 	SelectedForceFieldIds.Add(VectorFieldBeingEdited->ForceFields.Find(VectorFieldBeingEdited->ForceFields.Last()));
 	VectorFieldDesignerViewportPtr->GetViewportClient().Get()->Invalidate();
+
+	GEditor->EndTransaction();
 }
 
 void FVectorFieldDesignerWindow::RegisterTabSpawners(const TSharedRef<class FTabManager>& InTabManager)
@@ -458,7 +432,7 @@ void FVectorFieldDesignerWindow::AddReferencedObjects(FReferenceCollector& Colle
 	Collector.AddReferencedObject(VectorFieldBeingEdited);
 }
 
-void FVectorFieldDesignerWindow::AddSelectedForceField(int Index, bool bClearSelection)
+void FVectorFieldDesignerWindow::AddSelectedForceField(int32 Index, bool bClearSelection)
 {
 	//check(IsForceFieldValid(Index));
 
@@ -471,7 +445,7 @@ void FVectorFieldDesignerWindow::AddSelectedForceField(int Index, bool bClearSel
 		SelectedForceFieldIds.Add(Index);
 }
 
-void FVectorFieldDesignerWindow::RemoveSelectedForceField(int Index)
+void FVectorFieldDesignerWindow::RemoveSelectedForceField(int32 Index)
 {
 	SelectedForceFieldIds.Remove(Index);
 }
@@ -492,12 +466,12 @@ void FVectorFieldDesignerWindow::RemoveInvalidForceFields()
 	}
 }
 
-bool FVectorFieldDesignerWindow::IsSelectedForceField(int Index) const
+bool FVectorFieldDesignerWindow::IsSelectedForceField(int32 Index) const
 {
 	return SelectedForceFieldIds.Contains(Index);
 }
 
-bool FVectorFieldDesignerWindow::IsForceFieldValid(int Index) const
+bool FVectorFieldDesignerWindow::IsForceFieldValid(int32 Index) const
 {
 	return VectorFieldBeingEdited->ForceFields.IsValidIndex(Index);
 }
@@ -523,18 +497,35 @@ bool FVectorFieldDesignerWindow::GetLastSelectedForceFieldTransform(FTransform& 
 	return HasSelectedForceFields();
 }
 
+//inline static bool DescendingSortPredicate(const int32& e1, const int32& e2)
+//{
+//	return e1 > e2;
+//}
+
 void FVectorFieldDesignerWindow::DestroySelectedForceFields()
 {
-	for (int32 Index = SelectedForceFieldIds.Num() - 1; Index >= 0; --Index)
+	GEditor->BeginTransaction(LOCTEXT("DestroySelectedForceFieldsTransaction", "Destroy Selected Force Fields"));
+	VectorFieldBeingEdited->Modify();
+
+	//SelectedForceFieldIds.Sort([](const int32& e1, const int32& e2)
+	//{
+	//	return e1 > e2;
+	//});
+
+	for (int32 i = SelectedForceFieldIds.Num() - 1; i >= 0; --i)
 	{
+		int Index = SelectedForceFieldIds[i];
 		if (IsForceFieldValid(Index))
 		{
-			VectorFieldBeingEdited->ForceFields[SelectedForceFieldIds[Index]]->ConditionalBeginDestroy();
-			VectorFieldBeingEdited->ForceFields[SelectedForceFieldIds[Index]] = nullptr;
-			VectorFieldBeingEdited->ForceFields.RemoveAt(SelectedForceFieldIds[Index]);
-			SelectedForceFieldIds.RemoveAt(Index);
+			VectorFieldBeingEdited->ForceFields[Index]->ConditionalBeginDestroy();
+			VectorFieldBeingEdited->ForceFields[Index] = nullptr;
+			VectorFieldBeingEdited->ForceFields.RemoveAt(Index); // Here our force field is deleted and it alters all other ids
+			SelectedForceFieldIds.RemoveAt(i);
 		}
 	}
+
+	VectorFieldDesignerViewportPtr->GetViewportClient().Get()->Invalidate();
+	GEditor->EndTransaction();
 }
 
 TArray<UObject*> FVectorFieldDesignerWindow::GetObjectsToObserve() const
@@ -547,7 +538,7 @@ TArray<UObject*> FVectorFieldDesignerWindow::GetObjectsToObserve() const
 	}
 	else
 	{
-		for (auto& Index : SelectedForceFieldIds)
+		for (int32 Index : SelectedForceFieldIds)
 		{
 			if (IsForceFieldValid(Index))
 			{
@@ -561,7 +552,7 @@ TArray<UObject*> FVectorFieldDesignerWindow::GetObjectsToObserve() const
 
 void FVectorFieldDesignerWindow::TranslateSelectedForceFields(const FVector& DeltaDrag)
 {
-	for (int Index : SelectedForceFieldIds)
+	for (int32 Index : SelectedForceFieldIds)
 	{
 		if (IsForceFieldValid(Index))
 		{
@@ -575,7 +566,7 @@ void FVectorFieldDesignerWindow::TranslateSelectedForceFields(const FVector& Del
 
 void FVectorFieldDesignerWindow::RotateSelectedForceFields(const FRotator& DeltaRotation)
 {
-	for (int Index : SelectedForceFieldIds)
+	for (int32 Index : SelectedForceFieldIds)
 	{
 		if (IsForceFieldValid(Index))
 		{
@@ -589,7 +580,7 @@ void FVectorFieldDesignerWindow::RotateSelectedForceFields(const FRotator& Delta
 
 void FVectorFieldDesignerWindow::ScaleSelectedForceFields(const FVector& DeltaScale)
 {
-	for (int Index : SelectedForceFieldIds)
+	for (int32 Index : SelectedForceFieldIds)
 	{
 		if (IsForceFieldValid(Index))
 		{
@@ -599,6 +590,117 @@ void FVectorFieldDesignerWindow::ScaleSelectedForceFields(const FVector& DeltaSc
 			VectorFieldBeingEdited->MarkPackageDirty();
 		}
 	}
+}
+
+void FVectorFieldDesignerWindow::CreateVectorFieldStaticPackage(const FString& PackageName)
+{
+	UPackage* Package = CreatePackage(NULL, *PackageName);
+	UPackage* OutermostPkg = Package->GetOutermost();
+	UVectorFieldStatic* VectorField = NewObject<UVectorFieldStatic>(OutermostPkg, UVectorFieldStatic::StaticClass(), *FPaths::GetBaseFilename(PackageName), RF_Standalone | RF_Public);
+
+	VectorField->SizeX = VectorFieldBeingEdited->GridX;
+	VectorField->SizeY = VectorFieldBeingEdited->GridY;
+	VectorField->SizeZ = VectorFieldBeingEdited->GridZ;
+	VectorField->Bounds = VectorFieldBeingEdited->Bounds;
+
+	// Convert vectors to 16-bit FP and store.
+	const TArray<FVector> SrcValues = VectorFieldBeingEdited->CalculateVectorField();
+	const int32 VectorCount = SrcValues.Num();
+	const int32 DestBufferSize = VectorCount * sizeof(FFloat16Color);
+	VectorField->SourceData.Lock(LOCK_READ_WRITE);
+	FFloat16Color* RESTRICT DestValues = (FFloat16Color*)VectorField->SourceData.Realloc(DestBufferSize);
+	int Index = 0;
+	for (int32 VectorIndex = 0; VectorIndex < VectorCount; ++VectorIndex)
+	{
+		DestValues->R = SrcValues[VectorIndex].X;
+		DestValues->G = SrcValues[VectorIndex].Y;
+		DestValues->B = SrcValues[VectorIndex].Z;
+		DestValues->A = 0.0f;
+		++DestValues;
+	}
+	VectorField->SourceData.Unlock();
+
+	VectorField->InitResource();
+
+	FAssetRegistryModule::AssetCreated(VectorField);
+	VectorField->MarkPackageDirty();
+	Package->SetDirtyFlag(true);
+	VectorField->PostEditChange();
+	VectorField->AddToRoot();
+
+	VectorFieldBeingEdited->AssetPath = VectorField->GetPathName();
+	VectorFieldBeingEdited->MarkPackageDirty();
+
+	// Save Package
+	//TArray<UPackage*> PackagesToSave;
+	//PackagesToSave.Add(Package);
+	//FEditorFileUtils::PromptForCheckoutAndSave(PackagesToSave, bCheckDirtyOnAssetSave, /*bPromptToSave=*/ false);
+}
+
+void FVectorFieldDesignerWindow::UpdateVectorFieldStaticPackage(const FString& ObjectPath)
+{
+	UVectorFieldStatic* VectorField = Cast<UVectorFieldStatic>(StaticLoadObject(UVectorFieldStatic::StaticClass(), NULL, *ObjectPath));
+
+	VectorField->SizeX = VectorFieldBeingEdited->GridX;
+	VectorField->SizeY = VectorFieldBeingEdited->GridY;
+	VectorField->SizeZ = VectorFieldBeingEdited->GridZ;
+	VectorField->Bounds = VectorFieldBeingEdited->Bounds;
+
+	// Convert vectors to 16-bit FP and store.
+	const TArray<FVector> SrcValues = VectorFieldBeingEdited->CalculateVectorField();
+	const int32 VectorCount = SrcValues.Num();
+	const int32 DestBufferSize = VectorCount * sizeof(FFloat16Color);
+	VectorField->SourceData.Lock(LOCK_READ_WRITE);
+	FFloat16Color* RESTRICT DestValues = (FFloat16Color*)VectorField->SourceData.Realloc(DestBufferSize);
+	int Index = 0;
+	for (int32 VectorIndex = 0; VectorIndex < VectorCount; ++VectorIndex)
+	{
+		DestValues->R = SrcValues[VectorIndex].X;
+		DestValues->G = SrcValues[VectorIndex].Y;
+		DestValues->B = SrcValues[VectorIndex].Z;
+		DestValues->A = 0.0f;
+		++DestValues;
+	}
+	VectorField->SourceData.Unlock();
+
+	VectorField->MarkPackageDirty();
+	VectorField->PostEditChange();
+	VectorField->AddToRoot();
+
+	// Save Package
+	//TArray<UPackage*> PackagesToSave;
+	//PackagesToSave.Add(VectorField->GetOutermost());
+	//FEditorFileUtils::PromptForCheckoutAndSave(PackagesToSave, bCheckDirtyOnAssetSave, /*bPromptToSave=*/ false);
+}
+
+bool FVectorFieldDesignerWindow::DeleteVectorFieldStaticPackage(const FString& ObjectPath)
+{
+	//if (FPackageName::DoesPackageExist(FPackageName::FilenameToLongPackageName(ObjectPath)))
+	//{
+		//if (GIsEditor)
+		//{
+		//	UEditorEngine* Editor = GEditor;
+		//	FWorldContext* PIEWorldContext = GEditor->GetPIEWorldContext();
+		//	if (PIEWorldContext)
+		//	{
+		//		FNotificationInfo Notification(LOCTEXT("CannotDeleteAssetInPIE", "Assets cannot be deleted while in PIE."));
+		//		Notification.ExpireDuration = 3.0f;
+		//		FSlateNotificationManager::Get().AddNotification(Notification);
+		//		return;
+		//	}
+		//}
+
+		UVectorFieldStatic* VectorField = Cast<UVectorFieldStatic>(StaticLoadObject(UVectorFieldStatic::StaticClass(), NULL, *ObjectPath));
+//		UE_LOG(LogTemp, Warning, TEXT("Asset to delete: %s"), *ObjectPath);
+
+		TArray<UObject*> ObjectsToDelete;
+		ObjectsToDelete.Add(VectorField);
+		int32 DeletedAssetsCount = ObjectTools::DeleteObjects(ObjectsToDelete, true);
+//		UE_LOG(LogTemp, Warning, TEXT("Deleted Assets: %d"), DeletedAssetsCount);
+		return DeletedAssetsCount > 0;
+	//}
+
+	//return false;
 }
 
 #undef LOCTEXT_NAMESPACE

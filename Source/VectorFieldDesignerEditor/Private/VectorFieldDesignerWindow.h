@@ -30,7 +30,8 @@ public:
 	virtual void ExtendToolbar();
 	virtual void BindEditorCommands();
 
-	void SaveAsVectorField();
+	void ExportVectorField();
+	void ExportVectorFieldAs();
 
 	void CreateSphericalForceField();
 	void CreateVortexForceField();
@@ -47,12 +48,12 @@ public:
 
 	UCustomizableVectorField* GetVectorFieldBeingEdited() const { return VectorFieldBeingEdited; }
 
-	void AddSelectedForceField(int Index, bool bClearSelection);
-	void RemoveSelectedForceField(int Index);
+	void AddSelectedForceField(int32 Index, bool bClearSelection);
+	void RemoveSelectedForceField(int32 Index);
 	void ClearSelectedForceFields();
 	void RemoveInvalidForceFields();
-	bool IsSelectedForceField(int Index) const;
-	bool IsForceFieldValid(int Index) const;
+	bool IsSelectedForceField(int32 Index) const;
+	bool IsForceFieldValid(int32 Index) const;
 	bool HasSelectedForceFields() const;
 	bool GetLastSelectedForceFieldTransform(FTransform& OutTransform) const;
 	
@@ -65,8 +66,12 @@ public:
 	void ScaleSelectedForceFields(const FVector& DeltaScale);
 
 private:
+	void CreateVectorFieldStaticPackage(const FString& PackageName);
+	void UpdateVectorFieldStaticPackage(const FString& ObjectPath);
+	bool DeleteVectorFieldStaticPackage(const FString& ObjectPath);
+
 	UCustomizableVectorField* VectorFieldBeingEdited;
 	TSharedPtr<class SVectorFieldDesignerViewport> VectorFieldDesignerViewportPtr;
-	TArray<int> SelectedForceFieldIds;
+	TArray<int32> SelectedForceFieldIds;
 
 };

@@ -25,7 +25,8 @@ public class VectorFieldDesignerEditor : ModuleRules
                 "EditorStyle",
                 "EditorWidgets",
                 "VectorFieldDesigner",
-                "ContentBrowser"
+                "ContentBrowser",
+                "Projects"
             }
 		);
 

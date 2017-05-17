@@ -18,7 +18,8 @@ public:
 
 	}
 
-	TSharedPtr<FUICommandInfo> SaveAsVectorField;
+	TSharedPtr<FUICommandInfo> ExportVectorField;
+	TSharedPtr<FUICommandInfo> ExportVectorFieldAs;
 
 	TSharedPtr<FUICommandInfo> CreateSphericalForceField;
 	TSharedPtr<FUICommandInfo> CreateVortexForceField;

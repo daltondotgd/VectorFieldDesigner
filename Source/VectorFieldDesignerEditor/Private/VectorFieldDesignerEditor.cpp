@@ -4,10 +4,14 @@
 #include "CustomizableVectorField.h"
 #include "CustomizableVectorFieldActions.h"
 
+#include "VectorFieldDesignerStyle.h"
+
 #define LOCTEXT_NAMESPACE "FVectorFieldDesignerEditorModule"
 
 void FVectorFieldDesignerEditorModule::StartupModule()
 {
+	FVectorFieldDesignerStyle::Initialize();
+
 	IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 
 	TSharedRef<IAssetTypeActions> CustomizableVectorFieldAssetTypeActions = MakeShareable(new FCustomizableVectorFieldActions());
@@ -16,6 +20,8 @@ void FVectorFieldDesignerEditorModule::StartupModule()
 
 void FVectorFieldDesignerEditorModule::ShutdownModule()
 {
+	FVectorFieldDesignerStyle::Shutdown();
+
 	if (FModuleManager::Get().IsModuleLoaded("AssetTools"))
 	{
 		IAssetTools& AssetTools = FModuleManager::GetModuleChecked<FAssetToolsModule>("AssetTools").Get();

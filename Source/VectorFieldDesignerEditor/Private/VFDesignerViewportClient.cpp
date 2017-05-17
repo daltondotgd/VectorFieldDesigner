@@ -269,7 +269,7 @@ void FVFDesignerViewportClient::ProcessClick(FSceneView& View, HHitProxy* HitPro
 
 	const bool bCtrlDown = Viewport->KeyState(EKeys::LeftControl) || Viewport->KeyState(EKeys::RightControl);
 	const bool bShiftDown = Viewport->KeyState(EKeys::LeftShift) || Viewport->KeyState(EKeys::RightShift);
-	const bool bShouldMultiSelect = bCtrlDown && bShiftDown;
+	const bool bShouldMultiSelect = bCtrlDown || bShiftDown;
 
 	bool bClearSelectedForceFields = true;
 

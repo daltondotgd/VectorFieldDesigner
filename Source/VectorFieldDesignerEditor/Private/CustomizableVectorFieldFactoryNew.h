@@ -15,5 +15,6 @@ class UCustomizableVectorFieldFactoryNew : public UFactory
 
 public:
 	virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn, FName CallingContext) override;
+	virtual FString GetDefaultNewAssetName() const override;
 
 };
