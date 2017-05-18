@@ -9,6 +9,12 @@
 #include "CanvasItem.h"
 #include "Utils.h"
 
+#include "Particles/ParticleSystemComponent.h"
+#include "Particles/ParticleEmitter.h"
+#include "Particles/ParticleLODLevel.h"
+#include "Particles/VectorField/ParticleModuleVectorFieldLocal.h"
+#include "VectorField/VectorFieldStatic.h"
+
 #include "SceneManagement.h" // for primitive drawing
 #include "PhysicsEngine/ConvexElem.h"
 #include "PhysicsEngine/BoxElem.h"
@@ -49,7 +55,23 @@ FVFDesignerViewportClient::FVFDesignerViewportClient(TWeakPtr<FVectorFieldDesign
 
 	Invalidate();
 
-	SetInitialViewTransform(LVT_Perspective, FVector(150.0f, 150.0f, 100.0f), FRotator(-30.0f, -135.0f, 0.0f), 0.0f);
+	// TODO take a look at this, maybe it should be done in different place e.g. on CustomizableVectorField creaton?
+	for (int32 i = VectorFieldBeingEdited.Get()->ForceFields.Num() - 1; i >= 0; --i)
+	{
+		if (VectorFieldBeingEdited.Get()->ForceFields[i] == nullptr)
+		{
+			VectorFieldBeingEdited.Get()->ForceFields.RemoveAt(i);
+		}
+	}
+
+	SetInitialViewTransform(LVT_Perspective, FVector(150.0f, 150.0f, 100.0f), FRotator(-45.0f, -135.0f, 0.0f), 0.0f);
+	GetViewTransform().SetLookAt(VectorFieldBeingEdited.Get()->Bounds.GetCenter());
+
+	PreviewParticleSystemComponent = NewObject<UParticleSystemComponent>(GetTransientPackage(), NAME_None, RF_Transient);
+	SetPreviewParticleSystem(VectorFieldBeingEdited.Get()->PreviewParticleSystem);
+	OwnedPreviewScene.AddComponent(PreviewParticleSystemComponent, FTransform::Identity);
+	PreviewVectorFieldStaticInstance = NewObject<UVectorFieldStatic>(GetTransientPackage(), NAME_None, RF_Transient);
+
 }
 
 void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInterface* PDI)
@@ -148,6 +170,11 @@ void FVFDesignerViewportClient::Tick(float DeltaSeconds)
 	if (!GIntraFrameDebuggingGameThread)
 	{
 		OwnedPreviewScene.GetWorld()->Tick(LEVELTICK_All, DeltaSeconds);
+	}
+
+	if (PreviewParticleSystemComponent->Template != VectorFieldBeingEdited.Get()->PreviewParticleSystem)
+	{
+		SetPreviewParticleSystem(VectorFieldBeingEdited.Get()->PreviewParticleSystem);
 	}
 }
 
@@ -331,6 +358,25 @@ FLinearColor FVFDesignerViewportClient::GetBackgroundColor() const
 void FVFDesignerViewportClient::AddReferencedObjects(FReferenceCollector& Collector)
 {
 	FEditorViewportClient::AddReferencedObjects(Collector);
+}
+
+void FVFDesignerViewportClient::SetPreviewParticleSystem(UParticleSystem* PreviewParticleSystem)
+{
+	PreviewParticleSystemComponent->SetTemplate(PreviewParticleSystem);
+	//for (UParticleEmitter* ParticleEmitter : PreviewParticleSystemComponent->Template->Emitters)
+	//{
+	//	for (UParticleLODLevel* LODLevel : ParticleEmitter->LODLevels)
+	//	{
+	//		for (UParticleModule* Module : LODLevel->Modules)
+	//		{
+	//			UParticleModuleVectorFieldLocal* LocalVectorFieldModule = Cast<UParticleModuleVectorFieldLocal>(Module);
+	//			if (LocalVectorFieldModule)
+	//			{
+	//				LocalVectorFieldModule->VectorField = nullptr;
+	//			}
+	//		}
+	//	}
+	//}
 }
 
 #undef LOCTEXT_NAMESPACE 

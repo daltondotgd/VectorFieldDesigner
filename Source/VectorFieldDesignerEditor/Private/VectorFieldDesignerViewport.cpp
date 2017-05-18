@@ -66,6 +66,7 @@ EVisibility SVectorFieldDesignerViewport::GetTransformToolbarVisibility() const
 
 void SVectorFieldDesignerViewport::OnFocusViewportToSelection()
 {
+	EditorViewportClient->FocusViewportOnBox(VectorFieldBeingEdited.Get()->Bounds);
 }
 
 TSharedRef<class SEditorViewport> SVectorFieldDesignerViewport::GetViewportWidget()

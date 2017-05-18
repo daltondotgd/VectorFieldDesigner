@@ -497,20 +497,12 @@ bool FVectorFieldDesignerWindow::GetLastSelectedForceFieldTransform(FTransform& 
 	return HasSelectedForceFields();
 }
 
-//inline static bool DescendingSortPredicate(const int32& e1, const int32& e2)
-//{
-//	return e1 > e2;
-//}
-
 void FVectorFieldDesignerWindow::DestroySelectedForceFields()
 {
 	GEditor->BeginTransaction(LOCTEXT("DestroySelectedForceFieldsTransaction", "Destroy Selected Force Fields"));
 	VectorFieldBeingEdited->Modify();
 
-	//SelectedForceFieldIds.Sort([](const int32& e1, const int32& e2)
-	//{
-	//	return e1 > e2;
-	//});
+	SelectedForceFieldIds.Sort();
 
 	for (int32 i = SelectedForceFieldIds.Num() - 1; i >= 0; --i)
 	{
@@ -519,7 +511,7 @@ void FVectorFieldDesignerWindow::DestroySelectedForceFields()
 		{
 			VectorFieldBeingEdited->ForceFields[Index]->ConditionalBeginDestroy();
 			VectorFieldBeingEdited->ForceFields[Index] = nullptr;
-			VectorFieldBeingEdited->ForceFields.RemoveAt(Index); // Here our force field is deleted and it alters all other ids
+			VectorFieldBeingEdited->ForceFields.RemoveAt(Index);
 			SelectedForceFieldIds.RemoveAt(i);
 		}
 	}

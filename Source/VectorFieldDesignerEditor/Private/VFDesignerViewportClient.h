@@ -46,10 +46,16 @@ public:
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
 	// End of FSerializableObject interface
 
+	void SetPreviewParticleSystem(UParticleSystem* PreviewParticleSystem);
+
+	void Invalidate() { UE_LOG(LogTemp, Warning, TEXT("Called")); FEditorViewportClient::Invalidate(); };
 private:
 	TAttribute<UCustomizableVectorField*> VectorFieldBeingEdited;
 	TWeakPtr<FVectorFieldDesignerWindow> VectorFieldDesignerEditorPtr;
 	FPreviewScene OwnedPreviewScene;
+
+	class UParticleSystemComponent* PreviewParticleSystemComponent;
+	class UVectorFieldStatic* PreviewVectorFieldStaticInstance;
 
 	FWidget::EWidgetMode WidgetMode;
 

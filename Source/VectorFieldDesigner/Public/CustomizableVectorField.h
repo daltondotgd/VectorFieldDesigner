@@ -27,6 +27,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Customizable VectorField", meta = (ClampMin = "0", ClampMax = "64", UIMin = "1", UIMax = "32"))
 	int32 GridZ;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Preview")
+	UParticleSystem* PreviewParticleSystem;
+
 	UPROPERTY()
 	TArray<UForceFieldBase*> ForceFields;
 
