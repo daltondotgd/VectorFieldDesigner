@@ -4,6 +4,7 @@
 #include "VectorFieldDesignerWindow.h"
 #include "VectorFieldDesignerViewport.h"
 #include "VectorFieldDesignerCommands.h"
+#include "VFDUtils.h"
 
 #include "Widgets/Docking/SDockTab.h"
 #include "SSingleObjectDetailsPanel.h"
@@ -587,31 +588,7 @@ void FVectorFieldDesignerWindow::CreateVectorFieldStaticPackage(const FString& P
 	UPackage* Package = CreatePackage(NULL, *PackageName);
 	UPackage* OutermostPkg = Package->GetOutermost();
 	UVectorFieldStatic* VectorField = NewObject<UVectorFieldStatic>(OutermostPkg, UVectorFieldStatic::StaticClass(), *FPaths::GetBaseFilename(PackageName), RF_Standalone | RF_Public);
-
-	VectorField->SizeX = VectorFieldBeingEdited->GridX;
-	VectorField->SizeY = VectorFieldBeingEdited->GridY;
-	VectorField->SizeZ = VectorFieldBeingEdited->GridZ;
-	VectorField->Bounds = VectorFieldBeingEdited->Bounds;
-
-	// Convert vectors to 16-bit FP and store.
-	const TArray<FVector> SrcValues = VectorFieldBeingEdited->CalculateVectorField();
-	const int32 VectorCount = SrcValues.Num();
-	const int32 DestBufferSize = VectorCount * sizeof(FFloat16Color);
-	VectorField->SourceData.Lock(LOCK_READ_WRITE);
-	FFloat16Color* RESTRICT DestValues = (FFloat16Color*)VectorField->SourceData.Realloc(DestBufferSize);
-	int Index = 0;
-	for (int32 VectorIndex = 0; VectorIndex < VectorCount; ++VectorIndex)
-	{
-		DestValues->R = SrcValues[VectorIndex].X;
-		DestValues->G = SrcValues[VectorIndex].Y;
-		DestValues->B = SrcValues[VectorIndex].Z;
-		DestValues->A = 0.0f;
-		++DestValues;
-	}
-	VectorField->SourceData.Unlock();
-
-	//FVFDUtils::FillVectorFieldWithProjectData(VectorField, VectorFieldBeingEdited);
-
+	FVFDUtils::FillVectorFieldWithProjectData(VectorField, VectorFieldBeingEdited);
 	VectorField->InitResource();
 
 	FAssetRegistryModule::AssetCreated(VectorField);
@@ -632,29 +609,7 @@ void FVectorFieldDesignerWindow::CreateVectorFieldStaticPackage(const FString& P
 void FVectorFieldDesignerWindow::UpdateVectorFieldStaticPackage(const FString& ObjectPath)
 {
 	UVectorFieldStatic* VectorField = Cast<UVectorFieldStatic>(StaticLoadObject(UVectorFieldStatic::StaticClass(), NULL, *ObjectPath));
-
-	VectorField->SizeX = VectorFieldBeingEdited->GridX;
-	VectorField->SizeY = VectorFieldBeingEdited->GridY;
-	VectorField->SizeZ = VectorFieldBeingEdited->GridZ;
-	VectorField->Bounds = VectorFieldBeingEdited->Bounds;
-
-	// Convert vectors to 16-bit FP and store.
-	const TArray<FVector> SrcValues = VectorFieldBeingEdited->CalculateVectorField();
-	const int32 VectorCount = SrcValues.Num();
-	const int32 DestBufferSize = VectorCount * sizeof(FFloat16Color);
-	VectorField->SourceData.Lock(LOCK_READ_WRITE);
-	FFloat16Color* RESTRICT DestValues = (FFloat16Color*)VectorField->SourceData.Realloc(DestBufferSize);
-	int Index = 0;
-	for (int32 VectorIndex = 0; VectorIndex < VectorCount; ++VectorIndex)
-	{
-		DestValues->R = SrcValues[VectorIndex].X;
-		DestValues->G = SrcValues[VectorIndex].Y;
-		DestValues->B = SrcValues[VectorIndex].Z;
-		DestValues->A = 0.0f;
-		++DestValues;
-	}
-	VectorField->SourceData.Unlock();
-
+	FVFDUtils::FillVectorFieldWithProjectData(VectorField, VectorFieldBeingEdited);
 	VectorField->MarkPackageDirty();
 	VectorField->PostEditChange();
 	VectorField->AddToRoot();
