@@ -7,6 +7,8 @@
 #include "WindForceField.h"
 #include "VortexForceField.h"
 
+#include "VectorField/VectorFieldStatic.h"
+
 UCustomizableVectorField::UCustomizableVectorField(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 	, GridX(8)
@@ -19,10 +21,41 @@ UCustomizableVectorField::UCustomizableVectorField(const FObjectInitializer& Obj
 	Bounds.Max = FVector(200.0f);
 }
 
+void FillVectorFieldWithProjectData(UVectorFieldStatic* VectorFieldStaticInstance, UCustomizableVectorField* CustomizableVectrorFieldInstance)
+{
+	VectorFieldStaticInstance->SizeX = CustomizableVectrorFieldInstance->GridX;
+	VectorFieldStaticInstance->SizeY = CustomizableVectrorFieldInstance->GridY;
+	VectorFieldStaticInstance->SizeZ = CustomizableVectrorFieldInstance->GridZ;
+	VectorFieldStaticInstance->Bounds = CustomizableVectrorFieldInstance->Bounds;
+
+	// Convert vectors to 16-bit FP and store.
+	const TArray<FVector> SrcValues = CustomizableVectrorFieldInstance->CalculateVectorField();
+	const int32 VectorCount = SrcValues.Num();
+	const int32 DestBufferSize = VectorCount * sizeof(FFloat16Color);
+	VectorFieldStaticInstance->SourceData.Lock(LOCK_READ_WRITE);
+	FFloat16Color* RESTRICT DestValues = (FFloat16Color*)VectorFieldStaticInstance->SourceData.Realloc(DestBufferSize);
+	int Index = 0;
+	for (int32 VectorIndex = 0; VectorIndex < VectorCount; ++VectorIndex)
+	{
+		DestValues->R = SrcValues[VectorIndex].X;
+		DestValues->G = SrcValues[VectorIndex].Y;
+		DestValues->B = SrcValues[VectorIndex].Z;
+		DestValues->A = 0.0f;
+		++DestValues;
+	}
+	VectorFieldStaticInstance->SourceData.Unlock();
+}
+
+
 void UCustomizableVectorField::InitInstance(FVectorFieldInstance* Instance, bool bPreviewInstance)
 {
+	UVectorFieldStatic* VF = NewObject<UVectorFieldStatic>(this, NAME_None, RF_Transient);
+	FillVectorFieldWithProjectData(VF, this);
+	VF->InitResource();
+	VF->AddToRoot();
+	VF->InitInstance(Instance, bPreviewInstance);
 	//Instance->Init(Resource, /*bInstanced=*/ false);
-	UE_LOG(LogTemp, Fatal, TEXT("NOW"));
+	//UE_LOG(LogTemp, Fatal, TEXT("NOW"));
 }
 
 void UCustomizableVectorField::CreateSphericalForceField()
