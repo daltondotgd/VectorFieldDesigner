@@ -53,8 +53,6 @@ FVFDesignerViewportClient::FVFDesignerViewportClient(TWeakPtr<FVectorFieldDesign
 	EngineShowFlags.DisableAdvancedFeatures();
 	EngineShowFlags.SetCompositeEditorPrimitives(true);
 
-	Invalidate();
-
 	// TODO take a look at this, maybe it should be done in different place e.g. on CustomizableVectorField creaton?
 	for (int32 i = VectorFieldBeingEdited.Get()->ForceFields.Num() - 1; i >= 0; --i)
 	{
@@ -67,11 +65,39 @@ FVFDesignerViewportClient::FVFDesignerViewportClient(TWeakPtr<FVectorFieldDesign
 	SetInitialViewTransform(LVT_Perspective, FVector(150.0f, 150.0f, 100.0f), FRotator(-45.0f, -135.0f, 0.0f), 0.0f);
 	GetViewTransform().SetLookAt(VectorFieldBeingEdited.Get()->Bounds.GetCenter());
 
+	PreviewVectorFieldStaticInstance = NewObject<UVectorFieldStatic>(GetTransientPackage(), NAME_None, RF_Transient);
+	PreviewVectorFieldStaticInstance->SizeX = VectorFieldBeingEdited.Get()->GridX;
+	PreviewVectorFieldStaticInstance->SizeY = VectorFieldBeingEdited.Get()->GridY;
+	PreviewVectorFieldStaticInstance->SizeZ = VectorFieldBeingEdited.Get()->GridZ;
+	PreviewVectorFieldStaticInstance->Bounds = VectorFieldBeingEdited.Get()->Bounds;
+
+	// Convert vectors to 16-bit FP and store.
+	const TArray<FVector> SrcValues = VectorFieldBeingEdited.Get()->CalculateVectorField();
+	const int32 VectorCount = SrcValues.Num();
+	const int32 DestBufferSize = VectorCount * sizeof(FFloat16Color);
+	PreviewVectorFieldStaticInstance->SourceData.Lock(LOCK_READ_WRITE);
+	FFloat16Color* RESTRICT DestValues = (FFloat16Color*)PreviewVectorFieldStaticInstance->SourceData.Realloc(DestBufferSize);
+	int Index = 0;
+	for (int32 VectorIndex = 0; VectorIndex < VectorCount; ++VectorIndex)
+	{
+		DestValues->R = SrcValues[VectorIndex].X;
+		DestValues->G = SrcValues[VectorIndex].Y;
+		DestValues->B = SrcValues[VectorIndex].Z;
+		DestValues->A = 0.0f;
+		++DestValues;
+	}
+	PreviewVectorFieldStaticInstance->SourceData.Unlock();
+	PreviewVectorFieldStaticInstance->InitResource();
+	PreviewVectorFieldStaticInstance->PostEditChange();
+	PreviewVectorFieldStaticInstance->AddToRoot();
+
 	PreviewParticleSystemComponent = NewObject<UParticleSystemComponent>(GetTransientPackage(), NAME_None, RF_Transient);
 	SetPreviewParticleSystem(VectorFieldBeingEdited.Get()->PreviewParticleSystem);
 	OwnedPreviewScene.AddComponent(PreviewParticleSystemComponent, FTransform::Identity);
-	PreviewVectorFieldStaticInstance = NewObject<UVectorFieldStatic>(GetTransientPackage(), NAME_None, RF_Transient);
 
+	FEditorViewportClient::Invalidate();
+
+	VectorFieldDesignerEditorPtr.Pin()->OnFinishedChangingPropertiesDelegate.AddRaw(this, &FVFDesignerViewportClient::OnPropertyChanged);
 }
 
 void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInterface* PDI)
@@ -79,10 +105,6 @@ void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInter
 	FEditorViewportClient::Draw(View, PDI);
 
 	auto VectorFieldDesignerEditor = VectorFieldDesignerEditorPtr.Pin();
-	if (!VectorFieldDesignerEditor.IsValid())
-	{
-		return;
-	}
 
 	const FColor SelectedColor(149, 223, 157);
 	const FColor UnselectedColor(157, 149, 223);
@@ -170,11 +192,6 @@ void FVFDesignerViewportClient::Tick(float DeltaSeconds)
 	if (!GIntraFrameDebuggingGameThread)
 	{
 		OwnedPreviewScene.GetWorld()->Tick(LEVELTICK_All, DeltaSeconds);
-	}
-
-	if (PreviewParticleSystemComponent->Template != VectorFieldBeingEdited.Get()->PreviewParticleSystem)
-	{
-		SetPreviewParticleSystem(VectorFieldBeingEdited.Get()->PreviewParticleSystem);
 	}
 }
 
@@ -360,23 +377,75 @@ void FVFDesignerViewportClient::AddReferencedObjects(FReferenceCollector& Collec
 	FEditorViewportClient::AddReferencedObjects(Collector);
 }
 
+void FVFDesignerViewportClient::OnPropertyChanged(const FPropertyChangedEvent & PropertyChanged)
+{
+	if (PreviewParticleSystemComponent->Template != VectorFieldBeingEdited.Get()->PreviewParticleSystem)
+	{
+		SetPreviewParticleSystem(VectorFieldBeingEdited.Get()->PreviewParticleSystem);
+	}
+
+	Invalidate();
+}
+
 void FVFDesignerViewportClient::SetPreviewParticleSystem(UParticleSystem* PreviewParticleSystem)
 {
+	if (!PreviewParticleSystem)
+	{
+		return;
+	}
+
 	PreviewParticleSystemComponent->SetTemplate(PreviewParticleSystem);
-	//for (UParticleEmitter* ParticleEmitter : PreviewParticleSystemComponent->Template->Emitters)
-	//{
-	//	for (UParticleLODLevel* LODLevel : ParticleEmitter->LODLevels)
-	//	{
-	//		for (UParticleModule* Module : LODLevel->Modules)
-	//		{
-	//			UParticleModuleVectorFieldLocal* LocalVectorFieldModule = Cast<UParticleModuleVectorFieldLocal>(Module);
-	//			if (LocalVectorFieldModule)
-	//			{
-	//				LocalVectorFieldModule->VectorField = nullptr;
-	//			}
-	//		}
-	//	}
-	//}
+	for (UParticleEmitter* ParticleEmitter : PreviewParticleSystemComponent->Template->Emitters)
+	{
+		for (UParticleLODLevel* LODLevel : ParticleEmitter->LODLevels)
+		{
+			for (UParticleModule* Module : LODLevel->Modules)
+			{
+				UParticleModuleVectorFieldLocal* LocalVectorFieldModule = Cast<UParticleModuleVectorFieldLocal>(Module);
+				if (LocalVectorFieldModule)
+				{
+					LocalVectorFieldModule->VectorField = PreviewVectorFieldStaticInstance;
+				}
+			}
+		}
+	}
+
+	Invalidate();
+}
+
+void FVFDesignerViewportClient::Invalidate()
+{
+	FEditorViewportClient::Invalidate();
+
+	PreviewVectorFieldStaticInstance->SizeX = VectorFieldBeingEdited.Get()->GridX;
+	PreviewVectorFieldStaticInstance->SizeY = VectorFieldBeingEdited.Get()->GridY;
+	PreviewVectorFieldStaticInstance->SizeZ = VectorFieldBeingEdited.Get()->GridZ;
+	PreviewVectorFieldStaticInstance->Bounds = VectorFieldBeingEdited.Get()->Bounds;
+
+	// Convert vectors to 16-bit FP and store.
+	const TArray<FVector> SrcValues = VectorFieldBeingEdited.Get()->CalculateVectorField();
+	const int32 VectorCount = SrcValues.Num();
+	const int32 DestBufferSize = VectorCount * sizeof(FFloat16Color);
+	PreviewVectorFieldStaticInstance->SourceData.Lock(LOCK_READ_WRITE);
+	FFloat16Color* RESTRICT DestValues = (FFloat16Color*)PreviewVectorFieldStaticInstance->SourceData.Realloc(DestBufferSize);
+	int Index = 0;
+	for (int32 VectorIndex = 0; VectorIndex < VectorCount; ++VectorIndex)
+	{
+		DestValues->R = SrcValues[VectorIndex].X;
+		DestValues->G = SrcValues[VectorIndex].Y;
+		DestValues->B = SrcValues[VectorIndex].Z;
+		DestValues->A = 0.0f;
+		++DestValues;
+	}
+	PreviewVectorFieldStaticInstance->SourceData.Unlock();
+	PreviewVectorFieldStaticInstance->PostEditChange();
+
+	if (PreviewParticleSystemComponent->Template)
+	{
+		PreviewParticleSystemComponent->Template->BuildEmitters();
+		PreviewParticleSystemComponent->ResetParticles(true);
+		PreviewParticleSystemComponent->ActivateSystem();
+	}
 }
 
 #undef LOCTEXT_NAMESPACE 

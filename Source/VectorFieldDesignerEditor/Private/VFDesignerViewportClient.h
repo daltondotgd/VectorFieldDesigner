@@ -46,9 +46,12 @@ public:
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
 	// End of FSerializableObject interface
 
+	virtual void OnPropertyChanged(const FPropertyChangedEvent& PropertyChanged);
+
 	void SetPreviewParticleSystem(UParticleSystem* PreviewParticleSystem);
 
-	void Invalidate() { UE_LOG(LogTemp, Warning, TEXT("Called")); FEditorViewportClient::Invalidate(); };
+	void Invalidate();
+
 private:
 	TAttribute<UCustomizableVectorField*> VectorFieldBeingEdited;
 	TWeakPtr<FVectorFieldDesignerWindow> VectorFieldDesignerEditorPtr;

@@ -9,6 +9,7 @@
 #include "UObject/GCObject.h"
 #include "EditorUndoClient.h"
 #include "Toolkits/AssetEditorToolkit.h"
+#include "IDetailsView.h"
 
 /**
  * 
@@ -65,10 +66,14 @@ public:
 	void RotateSelectedForceFields(const FRotator& DeltaRotation);
 	void ScaleSelectedForceFields(const FVector& DeltaScale);
 
+	FOnFinishedChangingProperties OnFinishedChangingPropertiesDelegate;
+
 private:
 	void CreateVectorFieldStaticPackage(const FString& PackageName);
 	void UpdateVectorFieldStaticPackage(const FString& ObjectPath);
 	bool DeleteVectorFieldStaticPackage(const FString& ObjectPath);
+
+	void OnFinishedChangingProperties(const FPropertyChangedEvent& PropertyChangedEvent);
 
 	UCustomizableVectorField* VectorFieldBeingEdited;
 	TSharedPtr<class SVectorFieldDesignerViewport> VectorFieldDesignerViewportPtr;

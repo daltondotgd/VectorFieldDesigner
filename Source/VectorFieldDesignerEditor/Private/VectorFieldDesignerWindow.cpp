@@ -63,28 +63,16 @@ public:
 	SLATE_BEGIN_ARGS(SCustomizableVectorFieldPropertiesTabBody) {}
 	SLATE_END_ARGS()
 
-private:
-	TWeakPtr<class FVectorFieldDesignerWindow> VectorFieldDesignerPtr;
-
 public:
+	FOnFinishedChangingProperties OnFinishedChangingPropertiesDelegate;
+
 	void Construct(const FArguments& InArgs, TSharedPtr<FVectorFieldDesignerWindow> InVectorFieldDesigner)
 	{
-		VectorFieldDesignerPtr = InVectorFieldDesigner;
-
 		SSingleObjectDetailsPanel::Construct(SSingleObjectDetailsPanel::FArguments().HostCommandList(InVectorFieldDesigner->GetToolkitCommands()).HostTabManager(InVectorFieldDesigner->GetTabManager()), /*bAutomaticallyObserveViaGetObjectToObserve=*/ false, /*bAllowSearch=*/ true);
-	}
 
-	//virtual UObject* GetObjectToObserve() const override
-	//{
-	//	if (VectorFieldDesignerPtr.Pin()->HasSelectedForceFields())
-	//	{
-	//		return VectorFieldDesignerPtr.Pin()->GetFocusedForceField();
-	//	}
-	//	else
-	//	{
-	//		return VectorFieldDesignerPtr.Pin()->GetVectorFieldBeingEdited();
-	//	}
-	//}
+		VectorFieldDesignerPtr = InVectorFieldDesigner;
+		PropertyView->OnFinishedChangingProperties().AddSP(this, &SCustomizableVectorFieldPropertiesTabBody::OnFinishedChangingProperties);
+	}
 
 	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override
 	{
@@ -100,6 +88,15 @@ public:
 				PropertyEditorWidget
 			];
 	}
+
+private:
+	void OnFinishedChangingProperties(const FPropertyChangedEvent& PropertyChangedEvent)
+	{
+		OnFinishedChangingPropertiesDelegate.Broadcast(PropertyChangedEvent);
+	}
+
+	TWeakPtr<class FVectorFieldDesignerWindow> VectorFieldDesignerPtr;
+
 };
 
 const FName VectorFieldDesignerDetailsID(TEXT("VectorFieldDesignerDetails"));
@@ -340,7 +337,7 @@ void FVectorFieldDesignerWindow::CreateSphericalForceField()
 	VectorFieldBeingEdited->CreateSphericalForceField();
 	SelectedForceFieldIds.Empty();
 	SelectedForceFieldIds.Add(VectorFieldBeingEdited->ForceFields.Find(VectorFieldBeingEdited->ForceFields.Last()));
-	VectorFieldDesignerViewportPtr->GetViewportClient().Get()->Invalidate();
+	((FVFDesignerViewportClient*)VectorFieldDesignerViewportPtr->GetViewportClient().Get())->Invalidate();
 
 	GEditor->EndTransaction();
 }
@@ -353,7 +350,7 @@ void FVectorFieldDesignerWindow::CreateVortexForceField()
 	VectorFieldBeingEdited->CreateVortexForceField();
 	SelectedForceFieldIds.Empty();
 	SelectedForceFieldIds.Add(VectorFieldBeingEdited->ForceFields.Find(VectorFieldBeingEdited->ForceFields.Last()));
-	VectorFieldDesignerViewportPtr->GetViewportClient().Get()->Invalidate();
+	((FVFDesignerViewportClient*)VectorFieldDesignerViewportPtr->GetViewportClient().Get())->Invalidate();
 
 	GEditor->EndTransaction();
 }
@@ -366,7 +363,7 @@ void FVectorFieldDesignerWindow::CreateWindForceField()
 	VectorFieldBeingEdited->CreateWindForceField();
 	SelectedForceFieldIds.Empty();
 	SelectedForceFieldIds.Add(VectorFieldBeingEdited->ForceFields.Find(VectorFieldBeingEdited->ForceFields.Last()));
-	VectorFieldDesignerViewportPtr->GetViewportClient().Get()->Invalidate();
+	((FVFDesignerViewportClient*)VectorFieldDesignerViewportPtr->GetViewportClient().Get())->Invalidate();
 
 	GEditor->EndTransaction();
 }
@@ -402,6 +399,7 @@ TSharedRef<SDockTab> FVectorFieldDesignerWindow::SpawnTab_Details(const FSpawnTa
 	TSharedPtr<FVectorFieldDesignerWindow> VectorFieldDesignerWindowPtr = SharedThis(this);
 
 	auto DetailsPanel = SNew(SCustomizableVectorFieldPropertiesTabBody, VectorFieldDesignerWindowPtr);
+	DetailsPanel.Get().OnFinishedChangingPropertiesDelegate.AddSP(this, &FVectorFieldDesignerWindow::OnFinishedChangingProperties);
 
 	return SNew(SDockTab)
 		.Icon(FEditorStyle::GetBrush("LevelEditor.Tabs.Details"))
@@ -516,7 +514,7 @@ void FVectorFieldDesignerWindow::DestroySelectedForceFields()
 		}
 	}
 
-	VectorFieldDesignerViewportPtr->GetViewportClient().Get()->Invalidate();
+	((FVFDesignerViewportClient*)VectorFieldDesignerViewportPtr->GetViewportClient().Get())->Invalidate();
 	GEditor->EndTransaction();
 }
 
@@ -612,6 +610,8 @@ void FVectorFieldDesignerWindow::CreateVectorFieldStaticPackage(const FString& P
 	}
 	VectorField->SourceData.Unlock();
 
+	//FVFDUtils::FillVectorFieldWithProjectData(VectorField, VectorFieldBeingEdited);
+
 	VectorField->InitResource();
 
 	FAssetRegistryModule::AssetCreated(VectorField);
@@ -693,6 +693,11 @@ bool FVectorFieldDesignerWindow::DeleteVectorFieldStaticPackage(const FString& O
 	//}
 
 	//return false;
+}
+
+void FVectorFieldDesignerWindow::OnFinishedChangingProperties(const FPropertyChangedEvent& PropertyChangedEvent)
+{
+	OnFinishedChangingPropertiesDelegate.Broadcast(PropertyChangedEvent);
 }
 
 #undef LOCTEXT_NAMESPACE
