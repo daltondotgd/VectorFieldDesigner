@@ -58,7 +58,6 @@ private:
 	FPreviewScene OwnedPreviewScene;
 
 	class UParticleSystemComponent* PreviewParticleSystemComponent;
-	class UVectorFieldStatic* PreviewVectorFieldStaticInstance;
 
 	FWidget::EWidgetMode WidgetMode;
 

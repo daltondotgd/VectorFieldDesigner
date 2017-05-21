@@ -16,7 +16,7 @@
 /**
  * 
  */
-UCLASS()
+ UCLASS()
 class UForceFieldBase : public UObject
 {
 	GENERATED_UCLASS_BODY()
@@ -26,10 +26,16 @@ public:
 	virtual void Draw(FPrimitiveDrawInterface* PDI, const FColor& Color) const;
 	virtual bool IsInRange(const FVector& VectorLocation) const;
 
-	UPROPERTY(EditAnywhere, Category = "Force Field")
+	UPROPERTY(EditAnywhere, Category = "Transform")
 	FTransform Transform;
 
-	UPROPERTY(EditAnywhere, Category = "Force Field")
+	UPROPERTY(EditAnywhere, Category = "Force")
 	float Force;
+
+	//UPROPERTY(EditAnywhere, Category = "Force")
+	//bool bInvertDirection;
+
+	UPROPERTY(EditAnywhere, Category = "Falloff")
+	float FalloffExponent;
 
 };

@@ -4,6 +4,8 @@
 
 #include "ForceFieldBase.h"
 
+#include "VectorField/VectorFieldStatic.h"
+
 #include "VectorField/VectorField.h"
 #include "CustomizableVectorField.generated.h"
 
@@ -16,8 +18,6 @@ class VECTORFIELDDESIGNER_API UCustomizableVectorField : public UVectorField
 	GENERATED_UCLASS_BODY()
 
 public:
-	virtual void InitInstance(class FVectorFieldInstance* Instance, bool bPreviewInstance) override;
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Customizable VectorField", meta = (ClampMin = "0", ClampMax = "64", UIMin = "1", UIMax = "32"))
 	int32 GridX;
 
@@ -36,15 +36,23 @@ public:
 	UPROPERTY()
 	FString AssetPath;
 
+	UPROPERTY()
+	UVectorFieldStatic* VectorFieldInstance;
+
+	virtual void Init();
+
 	void CreateSphericalForceField();
 	void CreateVortexForceField();
 	void CreateWindForceField();
 
+	void PostSaveRoot(bool bCleanupIsRequired) override;
+
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+	virtual void InitInstance(class FVectorFieldInstance* Instance, bool bPreviewInstance) override;
+
 	FVector CalculateVector(FVector Location);
 	TArray<FVector> CalculateVectorField();
-
-private:
-	int32 GenerateNewUniqueForceFieldId();
-	int32 UniqueForceFieldIdCounter;
 
 };

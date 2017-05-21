@@ -31,6 +31,11 @@ public:
 	virtual void ExtendToolbar();
 	virtual void BindEditorCommands();
 
+	void Cut();
+	void Copy();
+	void Paste();
+	void Duplicate();
+
 	void ExportVectorField();
 	void ExportVectorFieldAs();
 

@@ -13,6 +13,7 @@
 #include "Framework/Commands/Commands.h"
 #include "Editor.h"
 
+#include "Framework/Commands/GenericCommands.h"
 #include "AssetRegistryModule.h"
 #include "VectorField/VectorFieldStatic.h"
 #include "Factories/VectorFieldStaticFactory.h"
@@ -266,6 +267,28 @@ FLinearColor FVectorFieldDesignerWindow::GetWorldCentricTabColorScale() const
 void FVectorFieldDesignerWindow::BindEditorCommands()
 {
 	const FVectorFieldDesignerCommands& Commands = FVectorFieldDesignerCommands::Get();
+	const FGenericCommands& GenericCommands = FGenericCommands::Get();
+
+	ToolkitCommands->MapAction(
+		GenericCommands.Cut,
+		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::Cut)
+	);
+
+	ToolkitCommands->MapAction(
+		GenericCommands.Copy,
+		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::Copy)
+	);
+
+	ToolkitCommands->MapAction(
+		GenericCommands.Paste,
+		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::Paste)
+	);
+
+	ToolkitCommands->MapAction(
+		GenericCommands.Duplicate,
+		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::Duplicate)
+	);
+
 
 	ToolkitCommands->MapAction(
 		Commands.ExportVectorField,
@@ -276,6 +299,7 @@ void FVectorFieldDesignerWindow::BindEditorCommands()
 		Commands.ExportVectorFieldAs,
 		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::ExportVectorFieldAs)
 	);
+
 
 	ToolkitCommands->MapAction(
 		Commands.CreateSphericalForceField,
@@ -291,6 +315,22 @@ void FVectorFieldDesignerWindow::BindEditorCommands()
 		Commands.CreateWindForceField,
 		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::CreateWindForceField)
 	);
+}
+
+void FVectorFieldDesignerWindow::Cut()
+{
+}
+
+void FVectorFieldDesignerWindow::Copy()
+{
+}
+
+void FVectorFieldDesignerWindow::Paste()
+{
+}
+
+void FVectorFieldDesignerWindow::Duplicate()
+{
 }
 
 void FVectorFieldDesignerWindow::ExportVectorField()

@@ -67,12 +67,6 @@ FVFDesignerViewportClient::FVFDesignerViewportClient(TWeakPtr<FVectorFieldDesign
 	SetInitialViewTransform(LVT_Perspective, FVector(150.0f, 150.0f, 100.0f), FRotator(-45.0f, -135.0f, 0.0f), 0.0f);
 	GetViewTransform().SetLookAt(VectorFieldBeingEdited.Get()->Bounds.GetCenter());
 
-	PreviewVectorFieldStaticInstance = NewObject<UVectorFieldStatic>(GetTransientPackage(), NAME_None, RF_Transient);
-	FVFDUtils::FillVectorFieldWithProjectData(PreviewVectorFieldStaticInstance, VectorFieldBeingEdited.Get());
-	PreviewVectorFieldStaticInstance->InitResource();
-	PreviewVectorFieldStaticInstance->PostEditChange();
-	PreviewVectorFieldStaticInstance->AddToRoot();
-
 	PreviewParticleSystemComponent = NewObject<UParticleSystemComponent>(GetTransientPackage(), NAME_None, RF_Transient);
 	SetPreviewParticleSystem(VectorFieldBeingEdited.Get()->PreviewParticleSystem);
 	OwnedPreviewScene.AddComponent(PreviewParticleSystemComponent, FTransform::Identity);
@@ -387,7 +381,7 @@ void FVFDesignerViewportClient::SetPreviewParticleSystem(UParticleSystem* Previe
 				UParticleModuleVectorFieldLocal* LocalVectorFieldModule = Cast<UParticleModuleVectorFieldLocal>(Module);
 				if (LocalVectorFieldModule)
 				{
-					LocalVectorFieldModule->VectorField = PreviewVectorFieldStaticInstance;
+					//LocalVectorFieldModule->VectorField = VectorFieldBeingEdited.Get();
 				}
 			}
 		}
@@ -399,10 +393,7 @@ void FVFDesignerViewportClient::SetPreviewParticleSystem(UParticleSystem* Previe
 void FVFDesignerViewportClient::Invalidate()
 {
 	FEditorViewportClient::Invalidate();
-
-	FVFDUtils::FillVectorFieldWithProjectData(PreviewVectorFieldStaticInstance, VectorFieldBeingEdited.Get());
-
-	PreviewVectorFieldStaticInstance->PostEditChange();
+	VectorFieldBeingEdited.Get()->PostEditChange();
 
 	if (PreviewParticleSystemComponent->Template)
 	{

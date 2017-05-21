@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "VectorFieldDesignerEditor.h"
+#include "VectorFieldDesigner.h"
 #include "VFDUtils.h"
 
 #include "CustomizableVectorField.h"

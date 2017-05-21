@@ -5,7 +5,7 @@
 /**
  * 
  */
-class FVFDUtils
+class VECTORFIELDDESIGNER_API FVFDUtils
 {
 public:
 	static void FillVectorFieldWithProjectData(class UVectorFieldStatic* VectorFieldStaticInstance, class UCustomizableVectorField* CustomizableVectrorFieldInstance);

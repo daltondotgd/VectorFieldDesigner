@@ -10,9 +10,12 @@ void FVectorFieldDesignerCommands::RegisterCommands()
 	UI_COMMAND(ExportVectorField, "Export Vector Field", "Exports a Vector Field asset", EUserInterfaceActionType::Button, FInputChord());
 	UI_COMMAND(ExportVectorFieldAs, "Export Vector Field As", "Exports a Vector Field asset as...", EUserInterfaceActionType::Button, FInputChord());
 
-	UI_COMMAND(CreateSphericalForceField, "Create Spherical Force Field", "Creates Spherical Force Field", EUserInterfaceActionType::Button, FInputChord());
-	UI_COMMAND(CreateVortexForceField, "Create Vortex Force Field", "Creates Vortex Force Field", EUserInterfaceActionType::Button, FInputChord());
-	UI_COMMAND(CreateWindForceField, "Create Wind Force Field", "Creates Wind Force Field", EUserInterfaceActionType::Button, FInputChord());
+	UI_COMMAND(CreateSphericalForceField, "Create Spherical Force Field", "Creates Spherical Force Field", EUserInterfaceActionType::Button,
+		FInputChord(EModifierKey::Shift, EKeys::S));
+	UI_COMMAND(CreateVortexForceField, "Create Vortex Force Field", "Creates Vortex Force Field", EUserInterfaceActionType::Button,
+		FInputChord(EModifierKey::Shift, EKeys::V));
+	UI_COMMAND(CreateWindForceField, "Create Wind Force Field", "Creates Wind Force Field", EUserInterfaceActionType::Button,
+		FInputChord(EModifierKey::Shift, EKeys::W));
 }
 
 #undef LOCTEXT_NAMESPACE

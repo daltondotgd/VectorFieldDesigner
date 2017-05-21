@@ -17,10 +17,11 @@ UCustomizableVectorFieldFactoryNew::UCustomizableVectorFieldFactoryNew(const FOb
 UObject* UCustomizableVectorFieldFactoryNew::FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn, FName CallingContext)
 {
 	UCustomizableVectorField* NewCustomizableVectorField = NewObject<UCustomizableVectorField>(InParent, InClass, InName, Flags | RF_Transactional);
+	NewCustomizableVectorField->Init();
 	return NewCustomizableVectorField;
 }
 
 FString UCustomizableVectorFieldFactoryNew::GetDefaultNewAssetName() const
 {
-	return TEXT("VFDP_VectorFieldDesignerProject");
+	return TEXT("NewCustomizableVectorField");
 }

@@ -27,6 +27,7 @@ public class VectorFieldDesigner : ModuleRules
 			new string[]
 			{
 				"Core",
+                "Engine",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -36,7 +37,6 @@ public class VectorFieldDesigner : ModuleRules
 			new string[]
 			{
 				"CoreUObject",
-				"Engine",
 				"Slate",
                 "SlateCore",
 				// ... add private dependencies that you statically link with here ...	

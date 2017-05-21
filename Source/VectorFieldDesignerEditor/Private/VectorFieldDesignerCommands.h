@@ -15,7 +15,6 @@ public:
 	FVectorFieldDesignerCommands()
 		: TCommands<FVectorFieldDesignerCommands>("CheapTuneObjectEditor", NSLOCTEXT("Contexts", "VectorFieldDesigner", "Vector Field Designer"), NAME_None, FEditorStyle::GetStyleSetName())
 	{
-
 	}
 
 	TSharedPtr<FUICommandInfo> ExportVectorField;
