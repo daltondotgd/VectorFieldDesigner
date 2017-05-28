@@ -13,13 +13,13 @@ UVortexForceField::UVortexForceField(const FObjectInitializer& ObjectInitializer
 
 FVector UVortexForceField::ForceAtLocation(const FVector& VectorLocation) const
 {
-	FVector Direction = Transform.GetRotation() * Transform.InverseTransformPosition(VectorLocation) * FVector(1, 1, 0);
+	FVector Direction = Transform.GetRotation() * Transform.InverseTransformPosition(VectorLocation * FVector(1, 1, 0));
 	float Length = 1.0f - Direction.Size() / Radius;
 
 	Direction.Normalize();
-	Direction *= Length;
+	Direction *= FMath::Pow(Length, FalloffExponent);
 
-	return FRotator::MakeFromEuler(FVector(0.0f, 0.0f, 90.0f * (1.0f - Length))).Quaternion() * Direction * (bInvertDirection ? -1.0f : 1.0f);
+	return FRotator::MakeFromEuler(/* Transform.GetRotation() * */ FVector(0.0f, 0.0f, 90.0f * (1.0f - Length))).Quaternion() * Direction * (bInvertDirection ? -1.0f : 1.0f);
 }
 
 void UVortexForceField::Draw(FPrimitiveDrawInterface* PDI, const FColor& Color) const

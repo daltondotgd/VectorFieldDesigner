@@ -15,7 +15,7 @@ FVector USphericalForceField::ForceAtLocation(const FVector& VectorLocation) con
 	float Length = 1.0f - Direction.Size() / Radius;
 
 	Direction.Normalize();
-	Direction *= Length;
+	Direction *= FMath::Pow(Length, FalloffExponent);
 
 	return Direction;
 }

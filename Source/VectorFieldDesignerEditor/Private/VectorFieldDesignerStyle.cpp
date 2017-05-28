@@ -40,6 +40,7 @@ void FVectorFieldDesignerStyle::Initialize()
 	const FVector2D Icon16x16(16.0f, 16.0f);
 	const FVector2D Icon20x20(20.0f, 20.0f);
 	const FVector2D Icon40x40(40.0f, 40.0f);
+	const FVector2D Icon64x64(64.0f, 64.0f);
 
 	// Only register once
 	if (StyleSet.IsValid())
@@ -58,6 +59,11 @@ void FVectorFieldDesignerStyle::Initialize()
 		StyleSet->Set("VFDesigner.CreateSphericalForceField", new IMAGE_PLUGIN_BRUSH(TEXT("Icons/icon_VFDesigner_CreateSphericalForceField_40x"), Icon40x40));
 		StyleSet->Set("VFDesigner.CreateVortexForceField", new IMAGE_PLUGIN_BRUSH(TEXT("Icons/icon_VFDesigner_CreateVortexForceField_40x"), Icon40x40));
 		StyleSet->Set("VFDesigner.CreateWindForceField", new IMAGE_PLUGIN_BRUSH(TEXT("Icons/icon_VFDesigner_CreateWindForceField_40x"), Icon40x40));
+	}
+
+	{
+		StyleSet->Set("ClassIcon.CustomizableVectorField", new IMAGE_PLUGIN_BRUSH("Icons/CustomizableVectorField_16x", Icon16x16));
+		StyleSet->Set("ClassThumbnail.CustomizableVectorField", new IMAGE_PLUGIN_BRUSH("Icons/CustomizableVectorField_64x", Icon64x64));
 	}
 
 	FSlateStyleRegistry::RegisterSlateStyle(*StyleSet.Get());

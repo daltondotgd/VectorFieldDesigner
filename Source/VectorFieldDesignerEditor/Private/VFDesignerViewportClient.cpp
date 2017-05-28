@@ -82,8 +82,15 @@ void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInter
 
 	auto VectorFieldDesignerEditor = VectorFieldDesignerEditorPtr.Pin();
 
+	/* Colors */
 	const FColor SelectedColor(149, 223, 157);
 	const FColor UnselectedColor(157, 149, 223);
+
+	const FColor VectorInActivePrimitiveColor(0, 255, 255);
+	const FColor VectorInInactivePrimitiveColor(0, 255, 0);
+
+	const FColor BoundsColor(0, 0, 255);
+	/* Colors END */
 
 	for (int32 Index = 0; Index < VectorFieldBeingEdited.Get()->ForceFields.Num(); ++Index)
 	{
@@ -110,7 +117,7 @@ void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInter
 			{
 				FVector Location = Bounds.GetExtent() * 2.0f * (FVector((float)x, (float)y, (float)z) + 0.5f) / GridResolution + Bounds.Min;
 				FVector Direction = VectorFieldBeingEdited.Get()->CalculateVector(Location);
-				FColor Color = FColor::Green;
+				FColor Color = VectorInInactivePrimitiveColor;
 				float Thickness = 0.0f;
 				uint8 Depth = SDPG_World;
 
@@ -121,7 +128,7 @@ void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInter
 						UForceFieldBase* ForceField = VectorFieldBeingEdited.Get()->ForceFields[Index];
 						if (ForceField->IsInRange(Location))
 						{
-							Color = FColor::Cyan;
+							Color = VectorInActivePrimitiveColor;
 							Thickness = 0.5f;
 							Depth = SDPG_Foreground;
 						}
@@ -138,7 +145,7 @@ void FVFDesignerViewportClient::Draw(const FSceneView* View, FPrimitiveDrawInter
 					FTransform Transform;
 					Transform.SetLocation(Location);
 					Transform.SetRotation(FRotationMatrix::MakeFromX(Direction).ToQuat());
-					DrawDirectionalArrow(PDI, Transform.ToMatrixNoScale(), Color, Direction.Size(), 1.0f, Depth, Thickness);
+					DrawDirectionalArrow(PDI, Transform.ToMatrixNoScale(), Color, Direction.Size() / 7.5f, 1.0f, Depth, Thickness);
 				}
 			}
 		}

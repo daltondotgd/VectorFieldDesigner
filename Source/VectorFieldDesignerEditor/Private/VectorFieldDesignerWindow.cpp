@@ -197,25 +197,25 @@ void FVectorFieldDesignerWindow::ExtendToolbar()
 	{
 		static void FillToolbar(FToolBarBuilder& ToolbarBuilder)
 		{
-			ToolbarBuilder.BeginSection("Export");
-			{
-				TSharedPtr<FUICommandInfo> ExportVectorFieldCommand = FVectorFieldDesignerCommands::Get().ExportVectorField;
-				ToolbarBuilder.AddToolBarButton(ExportVectorFieldCommand,
-					NAME_None,
-					LOCTEXT("VectorFieldEditorWindowExport", "Export"),
-					ExportVectorFieldCommand->GetDescription(),
-					FSlateIcon(FEditorStyle::GetStyleSetName(), "AssetEditor.SaveAsset")
-				);
+			//ToolbarBuilder.BeginSection("Export");
+			//{
+			//	TSharedPtr<FUICommandInfo> ExportVectorFieldCommand = FVectorFieldDesignerCommands::Get().ExportVectorField;
+			//	ToolbarBuilder.AddToolBarButton(ExportVectorFieldCommand,
+			//		NAME_None,
+			//		LOCTEXT("VectorFieldEditorWindowExport", "Export"),
+			//		ExportVectorFieldCommand->GetDescription(),
+			//		FSlateIcon(FEditorStyle::GetStyleSetName(), "AssetEditor.SaveAsset")
+			//	);
 
-				TSharedPtr<FUICommandInfo> ExportVectorFieldCommandAs = FVectorFieldDesignerCommands::Get().ExportVectorFieldAs;
-				ToolbarBuilder.AddToolBarButton(ExportVectorFieldCommandAs,
-					NAME_None,
-					LOCTEXT("VectorFieldEditorWindowExportAs", "Export As"),
-					ExportVectorFieldCommand->GetDescription(),
-					FSlateIcon(FEditorStyle::GetStyleSetName(), "AssetEditor.SaveAssetAs")
-				);
-			}
-			ToolbarBuilder.EndSection();
+			//	TSharedPtr<FUICommandInfo> ExportVectorFieldCommandAs = FVectorFieldDesignerCommands::Get().ExportVectorFieldAs;
+			//	ToolbarBuilder.AddToolBarButton(ExportVectorFieldCommandAs,
+			//		NAME_None,
+			//		LOCTEXT("VectorFieldEditorWindowExportAs", "Export As"),
+			//		ExportVectorFieldCommand->GetDescription(),
+			//		FSlateIcon(FEditorStyle::GetStyleSetName(), "AssetEditor.SaveAssetAs")
+			//	);
+			//}
+			//ToolbarBuilder.EndSection();
 
 			ToolbarBuilder.BeginSection("ForceFields");
 			{
