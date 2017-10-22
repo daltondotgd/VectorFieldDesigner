@@ -23,6 +23,11 @@
 #include "ContentBrowserModule.h"
 #include "ObjectTools.h"
 
+// Copy/Paste imports
+#include "Exporters/Exporter.h"
+#include "UnrealExporter.h"
+#include "Factories.h"
+
 #define LOCTEXT_NAMESPACE "FVectorFieldDesignerWindow"
 
 static bool OpenSaveAsDialog(UClass* SavedClass, const FString& InDefaultPath, const FString& InNewNameSuggestion, FString& OutPackageName, FString& OutObjectPath)
@@ -58,6 +63,31 @@ static bool OpenSaveAsDialog(UClass* SavedClass, const FString& InDefaultPath, c
 
 	return false;
 }
+
+// Text object factory for pasting layers
+struct FForceFieldTextFactory : public FCustomizableTextObjectFactory
+{
+public:
+	TArray<UForceFieldBase*> CreatedForceFields;
+public:
+	FForceFieldTextFactory()
+		: FCustomizableTextObjectFactory(GWarn)
+	{
+	}
+
+	// FCustomizableTextObjectFactory interface
+	virtual bool CanCreateClass(UClass* ObjectClass, bool& bOmitSubObjs) const override
+	{
+		// Only allow layers to be created
+		return ObjectClass->IsChildOf(UForceFieldBase::StaticClass());
+	}
+
+	virtual void ProcessConstructedObject(UObject* NewObject) override
+	{
+		CreatedForceFields.Add(CastChecked<UForceFieldBase>(NewObject));
+	}
+	// End of FCustomizableTextObjectFactory interface
+};
 
 class SCustomizableVectorFieldPropertiesTabBody : public SSingleObjectDetailsPanel
 {
@@ -270,23 +300,32 @@ void FVectorFieldDesignerWindow::BindEditorCommands()
 	const FGenericCommands& GenericCommands = FGenericCommands::Get();
 
 	ToolkitCommands->MapAction(
+		GenericCommands.SelectAll,
+		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::SelectAll)
+	);
+
+	ToolkitCommands->MapAction(
 		GenericCommands.Cut,
-		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::Cut)
+		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::Cut),
+		FCanExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::HasSelectedForceFields)
 	);
 
 	ToolkitCommands->MapAction(
 		GenericCommands.Copy,
-		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::Copy)
+		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::Copy),
+		FCanExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::HasSelectedForceFields)
 	);
 
 	ToolkitCommands->MapAction(
 		GenericCommands.Paste,
-		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::Paste)
+		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::Paste),
+		FCanExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::CanPaste)
 	);
 
 	ToolkitCommands->MapAction(
 		GenericCommands.Duplicate,
-		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::Duplicate)
+		FExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::Duplicate),
+		FCanExecuteAction::CreateSP(this, &FVectorFieldDesignerWindow::HasSelectedForceFields)
 	);
 
 
@@ -317,20 +356,114 @@ void FVectorFieldDesignerWindow::BindEditorCommands()
 	);
 }
 
+void FVectorFieldDesignerWindow::SelectAll()
+{
+	SelectedForceFieldIds.Empty();
+
+	for (int32 Index = 0; Index < VectorFieldBeingEdited->ForceFields.Num(); ++Index)
+	{
+		if (IsForceFieldValid(Index))
+		{
+			SelectedForceFieldIds.Add(Index);
+		}
+	}
+}
+
 void FVectorFieldDesignerWindow::Cut()
 {
+	GEditor->BeginTransaction(LOCTEXT("VectorFieldEditorWindowPasteForceField", "Cut selection"));
+	VectorFieldBeingEdited->SetFlags(RF_Transactional);
+	VectorFieldBeingEdited->Modify();
+
+	Copy();
+	DestroySelectedForceFields();
+
+	GEditor->EndTransaction();
 }
 
 void FVectorFieldDesignerWindow::Copy()
 {
+	UnMarkAllObjects(EObjectMark(OBJECTMARK_TagExp | OBJECTMARK_TagImp));
+	FStringOutputDevice ExportArchive;
+	const FExportObjectInnerContext Context;
+
+	for (int32 Index : SelectedForceFieldIds)
+	{
+		if (IsForceFieldValid(Index))
+		{
+			UExporter::ExportToOutputDevice(&Context, VectorFieldBeingEdited->ForceFields[Index], nullptr, ExportArchive, TEXT("copy"), 0, PPF_Copy, false, nullptr);
+		}
+	}
+
+	FPlatformMisc::ClipboardCopy(*ExportArchive);
 }
 
 void FVectorFieldDesignerWindow::Paste()
 {
+	FString ClipboardContent;
+	FPlatformMisc::ClipboardPaste(ClipboardContent);
+
+	if (!ClipboardContent.IsEmpty())
+	{
+		GEditor->BeginTransaction(LOCTEXT("VectorFieldEditorWindowPasteForceField", "Paste"));
+		VectorFieldBeingEdited->SetFlags(RF_Transactional);
+		VectorFieldBeingEdited->Modify();
+
+		// Turn the text buffer into objects
+		FForceFieldTextFactory Factory;
+		Factory.ProcessBuffer(VectorFieldBeingEdited, RF_Transactional, ClipboardContent);
+
+		SelectedForceFieldIds.Empty();
+
+		// Add them to the map and select them (there will currently only ever be 0 or 1)
+		for (UForceFieldBase* NewForceField : Factory.CreatedForceFields)
+		{
+			NewForceField->SetFlags(RF_Transactional);
+			VectorFieldBeingEdited->ForceFields.Add(NewForceField);
+			SelectedForceFieldIds.Add(VectorFieldBeingEdited->ForceFields.Find(VectorFieldBeingEdited->ForceFields.Last()));
+		}
+		((FVFDesignerViewportClient*)VectorFieldDesignerViewportPtr->GetViewportClient().Get())->Invalidate();
+		
+		GEditor->EndTransaction();
+	}
 }
 
 void FVectorFieldDesignerWindow::Duplicate()
 {
+	GEditor->BeginTransaction(LOCTEXT("VectorFieldEditorWindowPasteForceField", "Duplicate selection"));
+
+	DuplicateInternal();
+
+	GEditor->EndTransaction();
+}
+
+void FVectorFieldDesignerWindow::DuplicateInternal()
+{
+	VectorFieldBeingEdited->SetFlags(RF_Transactional);
+	VectorFieldBeingEdited->Modify();
+
+	TArray<int32> ForceFieldIdsToDuplicate = SelectedForceFieldIds;
+	SelectedForceFieldIds.Empty();
+
+	for (int32 Index : ForceFieldIdsToDuplicate)
+	{
+		if (IsForceFieldValid(Index))
+		{
+			UForceFieldBase* NewForceField = DuplicateObject(VectorFieldBeingEdited->ForceFields[Index], nullptr);
+			NewForceField->SetFlags(RF_Transactional);
+			VectorFieldBeingEdited->ForceFields.Add(NewForceField);
+			SelectedForceFieldIds.Add(VectorFieldBeingEdited->ForceFields.Find(VectorFieldBeingEdited->ForceFields.Last()));
+		}
+	}
+	((FVFDesignerViewportClient*)VectorFieldDesignerViewportPtr->GetViewportClient().Get())->Invalidate();
+}
+
+bool FVectorFieldDesignerWindow::CanPaste() const
+{
+	FString ClipboardContent;
+	FPlatformMisc::ClipboardPaste(ClipboardContent);
+
+	return !ClipboardContent.IsEmpty();
 }
 
 void FVectorFieldDesignerWindow::ExportVectorField()

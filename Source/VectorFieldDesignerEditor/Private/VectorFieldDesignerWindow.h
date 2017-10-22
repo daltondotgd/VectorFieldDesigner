@@ -31,10 +31,15 @@ public:
 	virtual void ExtendToolbar();
 	virtual void BindEditorCommands();
 
+	void SelectAll();
+
 	void Cut();
 	void Copy();
 	void Paste();
 	void Duplicate();
+	void DuplicateInternal();
+
+	bool CanPaste() const;
 
 	void ExportVectorField();
 	void ExportVectorFieldAs();

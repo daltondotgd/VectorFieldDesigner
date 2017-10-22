@@ -16,8 +16,8 @@
 /**
  * 
  */
- UCLASS()
-class UForceFieldBase : public UObject
+UCLASS()
+class VECTORFIELDDESIGNER_API UForceFieldBase : public UObject
 {
 	GENERATED_UCLASS_BODY()
 	

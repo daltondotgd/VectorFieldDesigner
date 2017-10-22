@@ -223,17 +223,22 @@ void FVFDesignerViewportClient::TrackingStarted(const FInputEventState& InInputS
 		switch (WidgetMode)
 		{
 			case FWidget::WM_Translate:
-				TransactionText = LOCTEXT("VectorFieldTransaction", "Translate ForceField");
+				TransactionText = LOCTEXT("VectorFieldTransactionTranslate", "Move ForceField");
 				break;
 			case FWidget::WM_Rotate:
-				TransactionText = LOCTEXT("VectorFieldTransaction", "Rotate ForceField");
+				TransactionText = LOCTEXT("VectorFieldTransactionRotate", "Rotate ForceField");
 				break;
 			case FWidget::WM_Scale:
-				TransactionText = LOCTEXT("VectorFieldTransaction", "Scale ForceField");
+				TransactionText = LOCTEXT("VectorFieldTransactionScale", "Scale ForceField");
 				break;
 		}
 
 		GEditor->BeginTransaction(TransactionText);
+
+		if (Viewport->KeyState(EKeys::LeftAlt))
+		{
+			VectorFieldDesignerEditorPtr.Pin()->DuplicateInternal();
+		}
 	}
 }
 
