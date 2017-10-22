@@ -6,8 +6,10 @@
 UWindForceField::UWindForceField(const FObjectInitializer& ObjectInitializer)
 	: UForceFieldBase(ObjectInitializer)
 {
+#if WITH_EDITOR
 	FString SpriteTexturePath = TEXT("/VectorFieldDesigner/Sprites/WindForceField.WindForceField");
 	WindSpriteTexture = LoadObject<UTexture2D>(this, *SpriteTexturePath, NULL, LOAD_None, NULL);
+#endif
 }
 
 FVector UWindForceField::ForceAtLocation(const FVector& VectorLocation) const

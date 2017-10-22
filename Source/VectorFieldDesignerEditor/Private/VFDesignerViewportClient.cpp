@@ -188,6 +188,8 @@ FWidget::EWidgetMode FVFDesignerViewportClient::GetWidgetMode() const
 
 bool FVFDesignerViewportClient::InputWidgetDelta(FViewport* InViewport, EAxisList::Type CurrentAxis, FVector& Drag, FRotator& Rot, FVector& Scale)
 {
+	const bool bShiftDown = Viewport->KeyState(EKeys::LeftShift) || Viewport->KeyState(EKeys::RightShift);
+
 	bool bHandled = false;
 	if (bManipulating)
 	{
@@ -235,7 +237,7 @@ void FVFDesignerViewportClient::TrackingStarted(const FInputEventState& InInputS
 
 		GEditor->BeginTransaction(TransactionText);
 
-		if (Viewport->KeyState(EKeys::LeftAlt))
+		if (Viewport->KeyState(EKeys::LeftAlt) || Viewport->KeyState(EKeys::RightAlt))
 		{
 			VectorFieldDesignerEditorPtr.Pin()->DuplicateInternal();
 		}
