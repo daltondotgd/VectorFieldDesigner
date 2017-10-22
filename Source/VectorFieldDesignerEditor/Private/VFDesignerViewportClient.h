@@ -33,7 +33,7 @@ public:
 	virtual bool CanCycleWidgetMode() const override;
 	virtual FVector GetWidgetLocation() const override;
 	virtual FMatrix GetWidgetCoordSystem() const override;
-	virtual ECoordSystem GetWidgetCoordSystemSpace() const override { return COORD_Local; }
+	//virtual ECoordSystem GetWidgetCoordSystemSpace() const override { return COORD_Local; }
 	// End of FViewportClient interface
 
 	// FEditorViewportClient interface

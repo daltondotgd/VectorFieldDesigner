@@ -5,7 +5,7 @@
 
 UVortexForceField::UVortexForceField(const FObjectInitializer& ObjectInitializer)
 	: UForceFieldBase(ObjectInitializer)
-	, Radius(50.0f)
+	, Radius(100.0f)
 	, HalfHeight(50.0f)
 	, bInvertDirection(false)
 {
@@ -13,13 +13,14 @@ UVortexForceField::UVortexForceField(const FObjectInitializer& ObjectInitializer
 
 FVector UVortexForceField::ForceAtLocation(const FVector& VectorLocation) const
 {
-	FVector Direction = Transform.GetRotation() * Transform.InverseTransformPosition(VectorLocation * FVector(1, 1, 0));
-	float Length = 1.0f - Direction.Size() / Radius;
+	FVector VectorLocationLocalSpace = Transform.InverseTransformPosition(VectorLocation);
 
-	Direction.Normalize();
-	Direction *= FMath::Pow(Length, FalloffExponent);
+	FVector Swirl = FVector(VectorLocationLocalSpace.Y - VectorLocationLocalSpace.X, -VectorLocationLocalSpace.X - VectorLocationLocalSpace.Y, 0.0f);
 
-	return FRotator::MakeFromEuler(/* Transform.GetRotation() * */ FVector(0.0f, 0.0f, 90.0f * (1.0f - Length))).Quaternion() * Direction * (bInvertDirection ? -1.0f : 1.0f);
+	float Distance = 1.0f - VectorLocationLocalSpace.Size() / Radius;
+	float Falloff = FMath::Pow(Distance, FalloffExponent);
+
+	return Transform.TransformVector(Swirl * Falloff);
 }
 
 void UVortexForceField::Draw(FPrimitiveDrawInterface* PDI, const FColor& Color) const

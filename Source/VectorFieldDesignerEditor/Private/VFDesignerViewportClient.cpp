@@ -285,7 +285,7 @@ FMatrix FVFDesignerViewportClient::GetWidgetCoordSystem() const
 {
 	FTransform Transform = FTransform::Identity;
 	const bool bSelectedForceField = VectorFieldDesignerEditorPtr.Pin()->GetLastSelectedForceFieldTransform(Transform);
-	if (bSelectedForceField)
+	if (bSelectedForceField && GetWidgetCoordSystemSpace() == COORD_Local)
 	{
 		return FRotationMatrix(Transform.GetRotation().Rotator());
 	}

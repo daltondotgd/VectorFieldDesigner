@@ -5,7 +5,7 @@
 
 UForceFieldBase::UForceFieldBase(const FObjectInitializer& ObjectInitializer)
 	: UObject(ObjectInitializer)
-	, Force(150.0f)
+	, Force(1.0f)
 {
 }
 

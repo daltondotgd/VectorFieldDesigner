@@ -9,7 +9,6 @@
 #include "PhysicsEngine/SphereElem.h"
 #include "PhysicsEngine/SphylElem.h"
 
-
 #include "UObject/NoExportTypes.h"
 #include "ForceFieldBase.generated.h"
 
