@@ -4,7 +4,8 @@ using UnrealBuildTool;
 
 public class VectorFieldDesigner : ModuleRules
 {
-	public VectorFieldDesigner(TargetInfo Target)
+	public VectorFieldDesigner(ReadOnlyTargetRules Target)
+        : base(Target)
 	{
 		
 		PublicIncludePaths.AddRange(

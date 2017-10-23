@@ -379,7 +379,14 @@ void FVFDesignerViewportClient::OnPropertyChanged(const FPropertyChangedEvent& P
 
 void FVFDesignerViewportClient::SetPreviewParticleSystem(UParticleSystem* PreviewParticleSystem)
 {
-	PreviewParticleSystemComponent->SetTemplate(PreviewParticleSystem);
+	if (!PreviewParticleSystem && PreviewParticleSystemComponent->Template)
+	{
+		PreviewParticleSystemComponent->Template->ConditionalBeginDestroy();
+		PreviewParticleSystemComponent->SetTemplate(nullptr);
+		return;
+	}
+
+	PreviewParticleSystemComponent->SetTemplate(DuplicateObject(PreviewParticleSystem, nullptr));
 
 	if (!PreviewParticleSystem)
 	{
@@ -395,7 +402,7 @@ void FVFDesignerViewportClient::SetPreviewParticleSystem(UParticleSystem* Previe
 				UParticleModuleVectorFieldLocal* LocalVectorFieldModule = Cast<UParticleModuleVectorFieldLocal>(Module);
 				if (LocalVectorFieldModule)
 				{
-					//LocalVectorFieldModule->VectorField = VectorFieldBeingEdited.Get();
+					LocalVectorFieldModule->VectorField = VectorFieldBeingEdited.Get();
 				}
 			}
 		}
