@@ -774,21 +774,20 @@ void FVectorFieldDesignerWindow::RotateSelectedForceFields(const FRotator& Delta
 			ForceField->Modify();
 
 			const FRotator CurrentRot = ForceField->Transform.GetRotation().Rotator();
-			FRotator SocketWinding;
-			FRotator SocketRotRemainder;
-			CurrentRot.GetWindingAndRemainder(SocketWinding, SocketRotRemainder);
+			FRotator ForceFieldWinding;
+			FRotator ForceFieldRotRemainder;
+			CurrentRot.GetWindingAndRemainder(ForceFieldWinding, ForceFieldRotRemainder);
 
-			const FQuat ForceFieldQ = SocketRotRemainder.Quaternion();
+			const FQuat ForceFieldQ = ForceFieldRotRemainder.Quaternion();
 			const FQuat DeltaQ = DeltaRotation.Quaternion();
 			const FQuat ResultQ = DeltaQ * ForceFieldQ;
 			const FRotator NewSocketRotRem = FRotator(ResultQ);
-			FRotator DeltaRot = NewSocketRotRem - SocketRotRemainder;
+			FRotator DeltaRot = NewSocketRotRem - ForceFieldRotRemainder;
 			DeltaRot.Normalize();
 
 			const FRotator NewRotation(CurrentRot + DeltaRot);
 			ForceField->Transform.SetRotation(NewRotation.Quaternion());
-
-
+			
 			VectorFieldBeingEdited->MarkPackageDirty();
 		}
 	}
