@@ -52,6 +52,7 @@ public:
 	virtual void UnregisterTabSpawners(const TSharedRef<class FTabManager>& InTabManager) override;
 
 	TSharedRef<SDockTab> SpawnTab_Viewport(const FSpawnTabArgs& Args);
+	TSharedRef<SDockTab> SpawnTab_ForceFieldsList(const FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> SpawnTab_Details(const FSpawnTabArgs& Args);
 
 	// Inherited via FGCObject

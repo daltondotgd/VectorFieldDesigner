@@ -23,6 +23,8 @@
 #include "ContentBrowserModule.h"
 #include "ObjectTools.h"
 
+#include "ForceFieldsList.h"
+
 // Copy/Paste imports
 #include "Exporters/Exporter.h"
 #include "UnrealExporter.h"
@@ -131,6 +133,7 @@ private:
 
 };
 
+const FName VectorFieldDesignerForceFieldsListID(TEXT("VectorFieldDesignerForceFieldsList"));
 const FName VectorFieldDesignerDetailsID(TEXT("VectorFieldDesignerDetails"));
 const FName VectorFieldDesignerViewportID(TEXT("VectorFieldDesignerViewport"));
 
@@ -146,7 +149,7 @@ void FVectorFieldDesignerWindow::InitVectorFieldDesignerWindow(const EToolkitMod
 
 	TSharedPtr<FVectorFieldDesignerWindow> VectorFieldDesignerWindowPtr = SharedThis(this);
 
-	const TSharedRef<FTabManager::FLayout> StandaloneDefaultLayout = FTabManager::NewLayout("Standalone_VectorFieldDesignerWindow_Layout_v0.0001")
+	const TSharedRef<FTabManager::FLayout> StandaloneDefaultLayout = FTabManager::NewLayout("Standalone_VectorFieldDesignerWindow_Layout_v0.0004")
 		->AddArea
 		(
 			FTabManager::NewPrimaryArea()
@@ -172,10 +175,23 @@ void FVectorFieldDesignerWindow::InitVectorFieldDesignerWindow(const EToolkitMod
 				)
 				->Split
 				(
-					FTabManager::NewStack()
+					FTabManager::NewSplitter()
+					->SetOrientation(Orient_Vertical)
 					->SetSizeCoefficient(0.2f)
-					->SetHideTabWell(true)
-					->AddTab(VectorFieldDesignerDetailsID, ETabState::OpenedTab)
+					->Split
+					(
+						FTabManager::NewStack()
+						->SetSizeCoefficient(0.3f)
+						->SetHideTabWell(true)
+						->AddTab(VectorFieldDesignerForceFieldsListID, ETabState::OpenedTab)
+					)
+					->Split
+					(
+						FTabManager::NewStack()
+						->SetSizeCoefficient(0.7f)
+						->SetHideTabWell(true)
+						->AddTab(VectorFieldDesignerDetailsID, ETabState::OpenedTab)
+					)
 				)
 			)
 		);
@@ -554,6 +570,11 @@ void FVectorFieldDesignerWindow::RegisterTabSpawners(const TSharedRef<class FTab
 		.SetGroup(WorkspaceMenuCategoryRef)
 		.SetIcon(FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.Tabs.Details"));
 
+	InTabManager->RegisterTabSpawner(VectorFieldDesignerForceFieldsListID, FOnSpawnTab::CreateSP(this, &FVectorFieldDesignerWindow::SpawnTab_ForceFieldsList))
+		.SetDisplayName(LOCTEXT("ForceFieldsListTab", "Force Fields"))
+		.SetGroup(WorkspaceMenuCategoryRef)
+		.SetIcon(FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.Tabs.Outliner"));
+
 	InTabManager->RegisterTabSpawner(VectorFieldDesignerViewportID, FOnSpawnTab::CreateSP(this, &FVectorFieldDesignerWindow::SpawnTab_Viewport))
 		.SetDisplayName(LOCTEXT("ViewportTab", "Viewport"))
 		.SetGroup(WorkspaceMenuCategoryRef)
@@ -580,6 +601,21 @@ TSharedRef<SDockTab> FVectorFieldDesignerWindow::SpawnTab_Details(const FSpawnTa
 		.Label(LOCTEXT("DetailsTab", "Details"))
 		[
 			DetailsPanel
+		];
+}
+
+TSharedRef<SDockTab> FVectorFieldDesignerWindow::SpawnTab_ForceFieldsList(const FSpawnTabArgs & Args)
+{
+	TSharedPtr<FVectorFieldDesignerWindow> VectorFieldDesignerWindowPtr = SharedThis(this);
+
+	auto ForceFieldsList = SNew(SForceFieldsList, VectorFieldDesignerWindowPtr)
+		.VectorFieldBeingEdited(VectorFieldBeingEdited);
+
+	return SNew(SDockTab)
+		.Icon(FEditorStyle::GetBrush("LevelEditor.Tabs.Outliner"))
+		.Label(LOCTEXT("ForceFieldsListTab", "Force Fields"))
+		[
+			ForceFieldsList
 		];
 }
 
@@ -736,7 +772,23 @@ void FVectorFieldDesignerWindow::RotateSelectedForceFields(const FRotator& Delta
 		{
 			UForceFieldBase* ForceField = VectorFieldBeingEdited->ForceFields[Index];
 			ForceField->Modify();
-			ForceField->Transform.SetRotation(ForceField->Transform.GetRotation() * DeltaRotation.Quaternion());
+
+			const FRotator CurrentRot = ForceField->Transform.GetRotation().Rotator();
+			FRotator SocketWinding;
+			FRotator SocketRotRemainder;
+			CurrentRot.GetWindingAndRemainder(SocketWinding, SocketRotRemainder);
+
+			const FQuat ForceFieldQ = SocketRotRemainder.Quaternion();
+			const FQuat DeltaQ = DeltaRotation.Quaternion();
+			const FQuat ResultQ = DeltaQ * ForceFieldQ;
+			const FRotator NewSocketRotRem = FRotator(ResultQ);
+			FRotator DeltaRot = NewSocketRotRem - SocketRotRemainder;
+			DeltaRot.Normalize();
+
+			const FRotator NewRotation(CurrentRot + DeltaRot);
+			ForceField->Transform.SetRotation(NewRotation.Quaternion());
+
+
 			VectorFieldBeingEdited->MarkPackageDirty();
 		}
 	}
